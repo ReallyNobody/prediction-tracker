@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Testing / linting
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Secrets
+.env
+.env.local
+.env.*.local
+secrets/
+*.key
+*.pem
+
+# Data (local only; do not commit)
+data/
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# Generated outputs
+output/
+outputs/
+*.png
+*.jpg
+*.jpeg
+*.pdf
+cat_loss_data.json
+cat_loss_export.json
+kalshi_weather_markets*.json
+prediction_markets*.json
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Node (if tailwind build added later)
+node_modules/
+package-lock.json
