@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalshi Weather Markets Dashboard - Risk Market News</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0a0e27;
+            color: #e2e8f0;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            border: 1px solid #334155;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: #1e293b;
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid #334155;
+        }
+        
+        .stat-label {
+            color: #94a3b8;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #3b82f6;
+        }
+        
+        .chart-container {
+            background: #1e293b;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            border: 1px solid #334155;
+        }
+        
+        .chart-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #f1f5f9;
+        }
+        
+        .markets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .market-card {
+            background: #1e293b;
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .market-card:hover {
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+        }
+        
+        .market-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: #f1f5f9;
+        }
+        
+        .market-prices {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .price-box {
+            flex: 1;
+            padding: 0.75rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .price-box.yes {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        
+        .price-box.no {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        .price-label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .price-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-top: 0.25rem;
+        }
+        
+        .price-box.yes .price-value {
+            color: #22c55e;
+        }
+        
+        .price-box.no .price-value {
+            color: #ef4444;
+        }
+        
+        .market-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.875rem;
+            color: #94a3b8;
+        }
+        
+        .filter-bar {
+            background: #1e293b;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            border: 1px solid #334155;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        select, input {
+            background: #0f172a;
+            color: #e2e8f0;
+            border: 1px solid #334155;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        
+        select:focus, input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .city-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: #1e40af;
+            color: #dbeafe;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌡️ Kalshi Weather Markets Dashboard</h1>
+            <p class="subtitle">Live prediction market data for Risk Market News</p>
+        </header>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Markets</div>
+                <div class="stat-value" id="totalMarkets">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total 24h Volume</div>
+                <div class="stat-value" id="totalVolume">$0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Cities Tracked</div>
+                <div class="stat-value" id="citiesTracked">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Avg Implied Prob</div>
+                <div class="stat-value" id="avgProb">0%</div>
+            </div>
+        </div>
+        
+        <div class="filter-bar">
+            <select id="cityFilter">
+                <option value="">All Cities</option>
+            </select>
+            
+            <select id="typeFilter">
+                <option value="">All Types</option>
+                <option value="HIGH">High Temperature</option>
+                <option value="LOW">Low Temperature</option>
+                <option value="SNOW">Snow</option>
+                <option value="RAIN">Rain</option>
+            </select>
+            
+            <select id="sortBy">
+                <option value="volume">Sort by Volume</option>
+                <option value="probability">Sort by Probability</option>
+                <option value="spread">Sort by Spread</option>
+            </select>
+            
+            <button onclick="applyFilters()">Apply</button>
+            <button onclick="resetFilters()">Reset</button>
+        </div>
+        
+        <div class="chart-container">
+            <h2 class="chart-title">Top Markets by 24h Volume</h2>
+            <canvas id="volumeChart"></canvas>
+        </div>
+        
+        <div class="chart-container">
+            <h2 class="chart-title">Temperature Probability Distribution</h2>
+            <canvas id="tempDistChart"></canvas>
+        </div>
+        
+        <div class="chart-container">
+            <h2 class="chart-title">All Markets</h2>
+            <div class="markets-grid" id="marketsGrid"></div>
+        </div>
+    </div>
+    
+    <script>
+        let allMarkets = [];
+        let filteredMarkets = [];
+        
+        // Load data
+        async function loadData() {
+            try {
+                const response = await fetch('kalshi_weather_markets.json');
+                allMarkets = await response.json();
+                
+                if (!allMarkets || allMarkets.length === 0) {
+                    document.querySelector('.container').innerHTML = `
+                        <div style="text-align: center; padding: 4rem;">
+                            <h2 style="color: #ef4444; margin-bottom: 1rem;">No Data Found</h2>
+                            <p style="color: #94a3b8;">Run the scraper to populate data:</p>
+                            <code style="background: #1e293b; padding: 1rem; display: block; margin-top: 1rem; border-radius: 8px;">
+                                python3 kalshi_authenticated_scraper.py
+                            </code>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                filteredMarkets = [...allMarkets];
+                initializeDashboard();
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.querySelector('.container').innerHTML = `
+                    <div style="text-align: center; padding: 4rem;">
+                        <h2 style="color: #ef4444;">Error Loading Data</h2>
+                        <p style="color: #94a3b8;">Make sure kalshi_weather_markets.json is in the same folder</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function initializeDashboard() {
+            updateStats();
+            populateCityFilter();
+            createVolumeChart();
+            createTempDistChart();
+            displayMarkets();
+        }
+        
+        function updateStats() {
+            const totalVol = filteredMarkets.reduce((sum, m) => sum + m.volume_24h, 0);
+            const avgYesBid = filteredMarkets.reduce((sum, m) => sum + m.yes_bid, 0) / filteredMarkets.length;
+            const cities = new Set(filteredMarkets.map(m => m.series_ticker.replace(/^KX(HIGH|LOW)T?/, ''))).size;
+            
+            document.getElementById('totalMarkets').textContent = filteredMarkets.length;
+            document.getElementById('totalVolume').textContent = '$' + (totalVol / 1000).toFixed(0) + 'K';
+            document.getElementById('citiesTracked').textContent = cities;
+            document.getElementById('avgProb').textContent = (avgYesBid * 100).toFixed(0) + '%';
+        }
+        
+        function populateCityFilter() {
+            const cities = new Set();
+            allMarkets.forEach(m => {
+                const city = m.series_ticker.replace(/^KX(HIGH|LOW)T?/, '').replace(/SNOWM|RAINM/, '');
+                if (city) cities.add(city);
+            });
+            
+            const select = document.getElementById('cityFilter');
+            Array.from(cities).sort().forEach(city => {
+                const option = document.createElement('option');
+                option.value = city;
+                option.textContent = city;
+                select.appendChild(option);
+            });
+        }
+        
+        function createVolumeChart() {
+            const topMarkets = [...filteredMarkets]
+                .sort((a, b) => b.volume_24h - a.volume_24h)
+                .slice(0, 10);
+            
+            const ctx = document.getElementById('volumeChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: topMarkets.map(m => m.title.substring(0, 40) + '...'),
+                    datasets: [{
+                        label: '24h Volume',
+                        data: topMarkets.map(m => m.volume_24h),
+                        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => 'Volume: $' + ctx.parsed.x.toLocaleString()
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: '#334155' }
+                        },
+                        y: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: '#334155' }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createTempDistChart() {
+            // Group by temperature range
+            const tempRanges = {};
+            filteredMarkets.forEach(m => {
+                if (m.title.includes('°')) {
+                    const match = m.title.match(/(\d+)-(\d+)°/);
+                    if (match) {
+                        const temp = Math.floor((parseInt(match[1]) + parseInt(match[2])) / 2);
+                        tempRanges[temp] = (tempRanges[temp] || 0) + m.yes_bid;
+                    }
+                }
+            });
+            
+            const temps = Object.keys(tempRanges).sort((a, b) => a - b);
+            
+            const ctx = document.getElementById('tempDistChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: temps.map(t => t + '°F'),
+                    datasets: [{
+                        label: 'Cumulative Probability',
+                        data: temps.map(t => tempRanges[t] * 100),
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => 'Probability: ' + ctx.parsed.y.toFixed(1) + '%'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: '#334155' }
+                        },
+                        y: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: '#334155' }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function displayMarkets() {
+            const grid = document.getElementById('marketsGrid');
+            grid.innerHTML = '';
+            
+            filteredMarkets.slice(0, 50).forEach(market => {
+                const card = document.createElement('div');
+                card.className = 'market-card';
+                card.onclick = () => window.open(market.url, '_blank');
+                
+                const city = market.series_ticker.replace(/^KX(HIGH|LOW)T?/, '').replace(/SNOWM|RAINM/, '');
+                
+                card.innerHTML = `
+                    <div class="city-badge">${city || 'Climate'}</div>
+                    <div class="market-title">${market.title}</div>
+                    <div class="market-prices">
+                        <div class="price-box yes">
+                            <div class="price-label">Yes</div>
+                            <div class="price-value">$${market.yes_bid.toFixed(2)}</div>
+                        </div>
+                        <div class="price-box no">
+                            <div class="price-label">No</div>
+                            <div class="price-value">$${market.no_bid.toFixed(2)}</div>
+                        </div>
+                    </div>
+                    <div class="market-meta">
+                        <span>Vol: $${market.volume_24h.toLocaleString()}</span>
+                        <span>OI: ${market.open_interest.toLocaleString()}</span>
+                    </div>
+                `;
+                
+                grid.appendChild(card);
+            });
+        }
+        
+        function applyFilters() {
+            const city = document.getElementById('cityFilter').value;
+            const type = document.getElementById('typeFilter').value;
+            const sortBy = document.getElementById('sortBy').value;
+            
+            filteredMarkets = allMarkets.filter(m => {
+                let matches = true;
+                if (city && !m.series_ticker.includes(city)) matches = false;
+                if (type && !m.series_ticker.includes(type)) matches = false;
+                return matches;
+            });
+            
+            if (sortBy === 'volume') {
+                filteredMarkets.sort((a, b) => b.volume_24h - a.volume_24h);
+            } else if (sortBy === 'probability') {
+                filteredMarkets.sort((a, b) => b.yes_bid - a.yes_bid);
+            } else if (sortBy === 'spread') {
+                filteredMarkets.sort((a, b) => 
+                    Math.abs(a.yes_ask - a.yes_bid) - Math.abs(b.yes_ask - b.yes_bid)
+                );
+            }
+            
+            updateStats();
+            displayMarkets();
+        }
+        
+        function resetFilters() {
+            document.getElementById('cityFilter').value = '';
+            document.getElementById('typeFilter').value = '';
+            document.getElementById('sortBy').value = 'volume';
+            filteredMarkets = [...allMarkets];
+            updateStats();
+            displayMarkets();
+        }
+        
+        // Load on page load
+        loadData();
+    </script>
+</body>
+</html>

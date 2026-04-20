@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Risk Market News - Catastrophe Loss Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            border: 1px solid #334155;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: #1e293b;
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: #3b82f6;
+        }
+        
+        .stat-label {
+            color: #94a3b8;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #3b82f6;
+        }
+        
+        .chart-container {
+            background: #1e293b;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            border: 1px solid #334155;
+        }
+        
+        .chart-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #f1f5f9;
+        }
+        
+        .data-table {
+            background: #1e293b;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #334155;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #0f172a;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: #3b82f6;
+            text-transform: uppercase;
+            font-size: 0.875rem;
+            letter-spacing: 0.05em;
+        }
+        
+        td {
+            padding: 1rem;
+            border-top: 1px solid #334155;
+        }
+        
+        tr:hover {
+            background: #0f172a;
+        }
+        
+        .company-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: #1e40af;
+            color: #dbeafe;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .loss-amount {
+            font-weight: 600;
+            color: #ef4444;
+        }
+        
+        .filter-section {
+            background: #1e293b;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            border: 1px solid #334155;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        select, input {
+            background: #0f172a;
+            color: #e2e8f0;
+            border: 1px solid #334155;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            min-width: 200px;
+        }
+        
+        select:focus, input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .event-tag {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: #dc2626;
+            color: #fef2f2;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌪️ Catastrophe Loss Tracker</h1>
+            <p class="subtitle">Real-time SEC filing data for insurance & reinsurance cat losses</p>
+        </header>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Net Losses</div>
+                <div class="stat-value" id="totalNetLosses">$810M</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Gross Losses</div>
+                <div class="stat-value" id="totalGrossLosses">$2.1B</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Events Tracked</div>
+                <div class="stat-value" id="eventsTracked">5</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Companies</div>
+                <div class="stat-value" id="companiesTracked">3</div>
+            </div>
+        </div>
+        
+        <div class="filter-section">
+            <select id="companyFilter">
+                <option value="">All Companies</option>
+                <option value="RenaissanceRe">RenaissanceRe Holdings</option>
+                <option value="Everest">Everest Re Group</option>
+                <option value="Arch">Arch Capital Group</option>
+            </select>
+            
+            <select id="eventFilter">
+                <option value="">All Events</option>
+                <option value="Milton">Hurricane Milton</option>
+                <option value="Helene">Hurricane Helene</option>
+                <option value="Wildfires">Los Angeles Wildfires</option>
+            </select>
+            
+            <button onclick="applyFilters()">Apply Filters</button>
+            <button onclick="resetFilters()">Reset</button>
+        </div>
+        
+        <div class="chart-container">
+            <h2 class="chart-title">Net Losses by Event</h2>
+            <canvas id="eventChart"></canvas>
+        </div>
+        
+        <div class="chart-container">
+            <h2 class="chart-title">Net Losses by Company</h2>
+            <canvas id="companyChart"></canvas>
+        </div>
+        
+        <div class="data-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Event</th>
+                        <th>Company</th>
+                        <th>Event Date</th>
+                        <th>Filing Date</th>
+                        <th>Net Loss</th>
+                        <th>Gross Loss</th>
+                        <th>Geography</th>
+                    </tr>
+                </thead>
+                <tbody id="dataTableBody">
+                    <!-- Data will be populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script>
+        // Sample data (in production, this would come from your database API)
+        const catLossData = [
+            {
+                event_name: "Hurricane Milton",
+                company: "RenaissanceRe Holdings",
+                ticker: "RNR",
+                event_date: "2024-10-09",
+                filing_date: "2024-10-30",
+                net_loss_usd: 125000000,
+                gross_loss_usd: 375000000,
+                geography: "United States - Florida"
+            },
+            {
+                event_name: "Hurricane Helene",
+                company: "RenaissanceRe Holdings",
+                ticker: "RNR",
+                event_date: "2024-09-26",
+                filing_date: "2024-10-30",
+                net_loss_usd: 150000000,
+                gross_loss_usd: 425000000,
+                geography: "United States - Southeast"
+            },
+            {
+                event_name: "Hurricane Milton",
+                company: "Everest Re Group",
+                ticker: "EG",
+                event_date: "2024-10-09",
+                filing_date: "2024-11-05",
+                net_loss_usd: 180000000,
+                gross_loss_usd: 450000000,
+                geography: "United States - Florida"
+            },
+            {
+                event_name: "Los Angeles Wildfires",
+                company: "Arch Capital Group",
+                ticker: "ACGL",
+                event_date: "2025-01-07",
+                filing_date: "2024-10-29",
+                net_loss_usd: 95000000,
+                gross_loss_usd: 285000000,
+                geography: "United States - California"
+            },
+            {
+                event_name: "Maui Wildfires",
+                company: "RenaissanceRe Holdings",
+                ticker: "RNR",
+                event_date: "2023-08-08",
+                filing_date: "2024-02-28",
+                net_loss_usd: 175000000,
+                gross_loss_usd: 350000000,
+                geography: "United States - Hawaii"
+            },
+            {
+                event_name: "Severe Convective Storms",
+                company: "Everest Re Group",
+                ticker: "EG",
+                event_date: "2024-05-15",
+                filing_date: "2024-08-06",
+                net_loss_usd: 85000000,
+                gross_loss_usd: 220000000,
+                geography: "United States - Midwest"
+            }
+        ];
+        
+        let filteredData = [...catLossData];
+        
+        // Format currency
+        function formatCurrency(amount) {
+            if (amount >= 1e9) {
+                return '$' + (amount / 1e9).toFixed(2) + 'B';
+            } else if (amount >= 1e6) {
+                return '$' + (amount / 1e6).toFixed(0) + 'M';
+            }
+            return '$' + amount.toLocaleString();
+        }
+        
+        // Populate data table
+        function populateTable(data) {
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = '';
+            
+            data.forEach(item => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td><span class="event-tag">${item.event_name}</span></td>
+                    <td><span class="company-badge">${item.ticker}</span> ${item.company}</td>
+                    <td>${new Date(item.event_date).toLocaleDateString()}</td>
+                    <td>${new Date(item.filing_date).toLocaleDateString()}</td>
+                    <td class="loss-amount">${formatCurrency(item.net_loss_usd)}</td>
+                    <td>${formatCurrency(item.gross_loss_usd)}</td>
+                    <td>${item.geography}</td>
+                `;
+            });
+        }
+        
+        // Update summary stats
+        function updateStats(data) {
+            const totalNet = data.reduce((sum, item) => sum + item.net_loss_usd, 0);
+            const totalGross = data.reduce((sum, item) => sum + item.gross_loss_usd, 0);
+            const events = new Set(data.map(item => item.event_name)).size;
+            const companies = new Set(data.map(item => item.company)).size;
+            
+            document.getElementById('totalNetLosses').textContent = formatCurrency(totalNet);
+            document.getElementById('totalGrossLosses').textContent = formatCurrency(totalGross);
+            document.getElementById('eventsTracked').textContent = events;
+            document.getElementById('companiesTracked').textContent = companies;
+        }
+        
+        // Create charts
+        function createEventChart(data) {
+            const eventLosses = {};
+            data.forEach(item => {
+                if (!eventLosses[item.event_name]) {
+                    eventLosses[item.event_name] = 0;
+                }
+                eventLosses[item.event_name] += item.net_loss_usd;
+            });
+            
+            const ctx = document.getElementById('eventChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(eventLosses),
+                    datasets: [{
+                        label: 'Net Loss (USD)',
+                        data: Object.values(eventLosses),
+                        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return formatCurrency(context.parsed.y);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                },
+                                color: '#94a3b8'
+                            },
+                            grid: { color: '#334155' }
+                        },
+                        x: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: '#334155' }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createCompanyChart(data) {
+            const companyLosses = {};
+            data.forEach(item => {
+                if (!companyLosses[item.ticker]) {
+                    companyLosses[item.ticker] = 0;
+                }
+                companyLosses[item.ticker] += item.net_loss_usd;
+            });
+            
+            const ctx = document.getElementById('companyChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(companyLosses),
+                    datasets: [{
+                        data: Object.values(companyLosses),
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.8)',
+                            'rgba(239, 68, 68, 0.8)',
+                            'rgba(34, 197, 94, 0.8)'
+                        ],
+                        borderColor: '#1e293b',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#94a3b8', padding: 20 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ': ' + formatCurrency(context.parsed);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function applyFilters() {
+            const companyFilter = document.getElementById('companyFilter').value;
+            const eventFilter = document.getElementById('eventFilter').value;
+            
+            filteredData = catLossData.filter(item => {
+                let matches = true;
+                if (companyFilter && !item.company.includes(companyFilter)) matches = false;
+                if (eventFilter && !item.event_name.includes(eventFilter)) matches = false;
+                return matches;
+            });
+            
+            updateDashboard();
+        }
+        
+        function resetFilters() {
+            document.getElementById('companyFilter').value = '';
+            document.getElementById('eventFilter').value = '';
+            filteredData = [...catLossData];
+            updateDashboard();
+        }
+        
+        function updateDashboard() {
+            populateTable(filteredData);
+            updateStats(filteredData);
+            
+            // Clear and recreate charts
+            document.getElementById('eventChart').remove();
+            document.getElementById('companyChart').remove();
+            
+            const eventContainer = document.querySelectorAll('.chart-container')[0];
+            const companyContainer = document.querySelectorAll('.chart-container')[1];
+            
+            const newEventCanvas = document.createElement('canvas');
+            newEventCanvas.id = 'eventChart';
+            eventContainer.appendChild(newEventCanvas);
+            
+            const newCompanyCanvas = document.createElement('canvas');
+            newCompanyCanvas.id = 'companyChart';
+            companyContainer.appendChild(newCompanyCanvas);
+            
+            createEventChart(filteredData);
+            createCompanyChart(filteredData);
+        }
+        
+        // Initialize dashboard
+        populateTable(catLossData);
+        updateStats(catLossData);
+        createEventChart(catLossData);
+        createCompanyChart(catLossData);
+    </script>
+</body>
+</html>
