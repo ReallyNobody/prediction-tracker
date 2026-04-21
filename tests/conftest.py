@@ -22,6 +22,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from rmn_dashboard.database import get_session
 from rmn_dashboard.main import app
@@ -30,11 +31,19 @@ from rmn_dashboard.models import Base
 
 @pytest.fixture
 def _test_engine() -> Generator[Engine, None, None]:
-    """In-memory SQLite engine with the full schema, scoped to one test."""
+    """In-memory SQLite engine with the full schema, scoped to one test.
+
+    Uses ``StaticPool`` so every connection checked out of the pool shares
+    the same underlying SQLite in-memory database. Without this, FastAPI's
+    TestClient can open a fresh connection for a route handler that sees
+    an empty database (each new connection to ``:memory:`` creates its own
+    DB by default), and any table we created during setup "disappears".
+    """
     engine = create_engine(
         "sqlite:///:memory:",
         future=True,
         connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
     )
     Base.metadata.create_all(engine)
     try:
