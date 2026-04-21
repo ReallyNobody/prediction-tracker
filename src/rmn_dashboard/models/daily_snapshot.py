@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, JSON, Text, UniqueConstraint, func
+from sqlalchemy import JSON, Date, DateTime, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from rmn_dashboard.models.base import Base
@@ -39,9 +39,7 @@ class DailySnapshot(Base):
         nullable=False,
     )
 
-    __table_args__ = (
-        UniqueConstraint("snapshot_date", name="uq_daily_snapshot_date"),
-    )
+    __table_args__ = (UniqueConstraint("snapshot_date", name="uq_daily_snapshot_date"),)
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<DailySnapshot {self.snapshot_date}>"

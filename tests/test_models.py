@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -38,9 +38,7 @@ def test_cat_loss_roundtrip(db_session: Session) -> None:
     db_session.add(loss)
     db_session.commit()
 
-    fetched = db_session.scalar(
-        select(CatLoss).where(CatLoss.event_name == "Hurricane Testalina")
-    )
+    fetched = db_session.scalar(select(CatLoss).where(CatLoss.event_name == "Hurricane Testalina"))
 
     assert fetched is not None
     assert fetched.company == "Test Re"
@@ -111,14 +109,14 @@ def test_storm_with_forecast_cascade(db_session: Session) -> None:
         [
             Forecast(
                 storm_id=storm.id,
-                issued_at=datetime(2025, 9, 1, 12, 0, tzinfo=timezone.utc),
+                issued_at=datetime(2025, 9, 1, 12, 0, tzinfo=UTC),
                 cone_geojson={"type": "Polygon", "coordinates": []},
                 discussion_text="First advisory.",
                 raw_source_url="https://www.nhc.noaa.gov/...",
             ),
             Forecast(
                 storm_id=storm.id,
-                issued_at=datetime(2025, 9, 1, 18, 0, tzinfo=timezone.utc),
+                issued_at=datetime(2025, 9, 1, 18, 0, tzinfo=UTC),
                 discussion_text="Second advisory.",
             ),
         ]
@@ -151,9 +149,7 @@ def test_carrier_exposure_minimal(db_session: Session) -> None:
     )
     db_session.commit()
 
-    rows = db_session.scalars(
-        select(CarrierExposure).where(CarrierExposure.state == "FL")
-    ).all()
+    rows = db_session.scalars(select(CarrierExposure).where(CarrierExposure.state == "FL")).all()
     assert len(rows) == 1
     assert rows[0].carrier_group == "State Farm Group"
 
@@ -202,10 +198,14 @@ def test_prediction_market_and_daily_snapshot(db_session: Session) -> None:
     )
     db_session.commit()
 
-    pm = db_session.scalar(select(PredictionMarket).where(PredictionMarket.ticker == "HURR-2026-FL"))
+    pm = db_session.scalar(
+        select(PredictionMarket).where(PredictionMarket.ticker == "HURR-2026-FL")
+    )
     assert pm is not None
     assert pm.yes_price == 42.0
 
-    ds = db_session.scalar(select(DailySnapshot).where(DailySnapshot.snapshot_date == date(2026, 6, 1)))
+    ds = db_session.scalar(
+        select(DailySnapshot).where(DailySnapshot.snapshot_date == date(2026, 6, 1))
+    )
     assert ds is not None
     assert ds.key_numbers_json == {"active_storms": 0, "named_storms_ytd": 0}

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Float, Integer, JSON, String, UniqueConstraint, func
+from sqlalchemy import JSON, Date, DateTime, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from rmn_dashboard.models.base import Base
@@ -35,7 +35,9 @@ class Storm(Base):
     # Lifecycle
     genesis_date: Mapped[date | None] = mapped_column(Date)
     dissipation_date: Mapped[date | None] = mapped_column(Date)
-    status: Mapped[str | None] = mapped_column(String(40))  # "active", "post-tropical", "dissipated"
+    status: Mapped[str | None] = mapped_column(
+        String(40)
+    )  # "active", "post-tropical", "dissipated"
 
     # Geospatial — stored as GeoJSON blobs; we only need to render them, not query them
     track_geojson: Mapped[dict | None] = mapped_column(JSON)
@@ -48,9 +50,7 @@ class Storm(Base):
         nullable=False,
     )
 
-    __table_args__ = (
-        UniqueConstraint("nhc_id", name="uq_storms_nhc_id"),
-    )
+    __table_args__ = (UniqueConstraint("nhc_id", name="uq_storms_nhc_id"),)
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Storm {self.nhc_id} {self.name} ({self.season_year})>"

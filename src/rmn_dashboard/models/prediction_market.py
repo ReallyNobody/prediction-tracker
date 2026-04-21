@@ -23,13 +23,17 @@ class PredictionMarket(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
 
     # Source identification
-    platform: Mapped[str] = mapped_column(String(20), nullable=False, index=True)  # kalshi | polymarket
+    platform: Mapped[str] = mapped_column(
+        String(20), nullable=False, index=True
+    )  # kalshi | polymarket
     ticker: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     event_ticker: Mapped[str | None] = mapped_column(String(100), index=True)
 
     # Presentation
     title: Mapped[str] = mapped_column(String(500), nullable=False)
-    category: Mapped[str | None] = mapped_column(String(40), index=True)  # hurricane, wildfire, etc.
+    category: Mapped[str | None] = mapped_column(
+        String(40), index=True
+    )  # hurricane, wildfire, etc.
 
     # Quotes. Prices in cents (0–100) for both platforms after normalization.
     yes_price: Mapped[float | None] = mapped_column(Float)
@@ -51,7 +55,9 @@ class PredictionMarket(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint("platform", "ticker", "last_updated", name="uq_prediction_market_snapshot"),
+        UniqueConstraint(
+            "platform", "ticker", "last_updated", name="uq_prediction_market_snapshot"
+        ),
         Index("ix_prediction_markets_category_close", "category", "close_date"),
     )
 

@@ -20,9 +20,7 @@ def db_session() -> Generator[Session, None, None]:
     """An isolated in-memory SQLite session per test."""
     engine = create_engine("sqlite:///:memory:", future=True)
     Base.metadata.create_all(engine)
-    TestingSession = sessionmaker(
-        bind=engine, autoflush=False, autocommit=False, future=True
-    )
+    TestingSession = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
     session = TestingSession()
     try:
         yield session

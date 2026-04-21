@@ -24,7 +24,9 @@ if str(SRC_DIR) not in sys.path:
 
 from rmn_dashboard.config import settings  # noqa: E402
 from rmn_dashboard.database import normalize_database_url  # noqa: E402
-from rmn_dashboard.models import Base  # noqa: E402  — importing the package ensures all models register
+from rmn_dashboard.models import (
+    Base,  # noqa: E402  — importing the package ensures all models register
+)
 
 config = context.config
 

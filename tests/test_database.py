@@ -17,18 +17,12 @@ def test_sqlite_url_is_passed_through_unchanged() -> None:
 
 def test_postgres_scheme_is_rewritten_to_postgresql_psycopg() -> None:
     render_style = "postgres://user:pw@host:5432/dbname"
-    assert (
-        normalize_database_url(render_style)
-        == "postgresql+psycopg://user:pw@host:5432/dbname"
-    )
+    assert normalize_database_url(render_style) == "postgresql+psycopg://user:pw@host:5432/dbname"
 
 
 def test_bare_postgresql_gets_psycopg_driver_appended() -> None:
     url = "postgresql://user:pw@host:5432/dbname"
-    assert (
-        normalize_database_url(url)
-        == "postgresql+psycopg://user:pw@host:5432/dbname"
-    )
+    assert normalize_database_url(url) == "postgresql+psycopg://user:pw@host:5432/dbname"
 
 
 def test_explicit_driver_is_preserved() -> None:

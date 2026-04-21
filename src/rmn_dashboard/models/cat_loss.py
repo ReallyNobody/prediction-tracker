@@ -51,9 +51,7 @@ class CatLoss(Base, TimestampMixin):
     # Narrative
     context: Mapped[str | None] = mapped_column(Text)
 
-    __table_args__ = (
-        Index("ix_cat_losses_event_company", "event_name", "company"),
-    )
+    __table_args__ = (Index("ix_cat_losses_event_company", "event_name", "company"),)
 
     def __repr__(self) -> str:  # pragma: no cover — debug aid only
         return (
