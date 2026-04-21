@@ -1,14 +1,16 @@
-"""Integration tests for HTTP routes."""
+"""Integration tests for HTTP routes.
+
+Uses the shared ``client`` fixture (see ``conftest.py``), which overrides
+``get_session`` so the app talks to a per-test in-memory SQLite DB with
+the full ORM schema already applied.
+"""
 
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from rmn_dashboard.main import app
 
-
-def test_index_returns_html_with_panel_shells() -> None:
-    client = TestClient(app)
+def test_index_returns_html_with_panel_shells(client: TestClient) -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
@@ -33,8 +35,7 @@ def test_index_returns_html_with_panel_shells() -> None:
         assert heading in body, f"missing heading: {heading}"
 
 
-def test_healthz() -> None:
-    client = TestClient(app)
+def test_healthz(client: TestClient) -> None:
     response = client.get("/healthz")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
