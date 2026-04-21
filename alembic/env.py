@@ -23,12 +23,14 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from rmn_dashboard.config import settings  # noqa: E402
+from rmn_dashboard.database import normalize_database_url  # noqa: E402
 from rmn_dashboard.models import Base  # noqa: E402  — importing the package ensures all models register
 
 config = context.config
 
 # Inject the runtime DATABASE_URL — overrides alembic.ini's placeholder.
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# Normalize Render/Heroku-style ``postgres://`` URLs so SQLAlchemy 2.x accepts them.
+config.set_main_option("sqlalchemy.url", normalize_database_url(settings.database_url))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

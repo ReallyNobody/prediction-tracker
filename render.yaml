@@ -1,0 +1,66 @@
+# Render Blueprint — declarative deploy config for the RMN Hurricane Dashboard.
+#
+# Committing this file lets Render materialize the web service + managed
+# Postgres in one click. Point Render at this repo, pick "New Blueprint",
+# and it reads everything below.
+#
+# Plan: Starter web ($7/mo) + Starter Postgres ($7/mo) = $14/mo.
+# The free tier sleeps after 15 minutes idle, which would make a public
+# dashboard look broken when readers click through from a newsletter.
+#
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: rmn-hurricane-dashboard
+    runtime: python
+    plan: starter
+    region: oregon                 # cheapest US region; change if you want east
+    branch: main                   # only deploys off main — scaffold-week-1 merges in via PR
+    autoDeploy: true               # every push to main triggers a new build
+    healthCheckPath: /healthz      # the liveness endpoint we already ship
+
+    buildCommand: |
+      pip install --upgrade pip && pip install -e '.[prod]'
+
+    # Run migrations on every deploy, then boot gunicorn with uvicorn workers.
+    # gunicorn's pre-fork model means ``alembic upgrade head`` runs once in the
+    # master before workers spawn, so there's no migration race.
+    startCommand: |
+      alembic upgrade head && \
+      gunicorn rmn_dashboard.main:app \
+        --workers 2 \
+        --worker-class uvicorn.workers.UvicornWorker \
+        --bind 0.0.0.0:$PORT \
+        --access-logfile - \
+        --error-logfile - \
+        --timeout 30
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: APP_ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: SCHEDULER_ENABLED
+        value: "false"             # flip to "true" when Week 2 scrapers land
+      - key: DATABASE_URL
+        fromDatabase:
+          name: rmn-hurricane-db
+          property: connectionString
+      - key: SEC_USER_AGENT
+        sync: false                # set manually in the Render dashboard — keeps the email out of the repo
+      - key: KALSHI_API_KEY_ID
+        sync: false                # wired up in Week 4
+      - key: KALSHI_PRIVATE_KEY_PATH
+        sync: false                # secret file path; populate when Kalshi lands
+
+databases:
+  - name: rmn-hurricane-db
+    plan: starter                  # 1GB storage, 97 connection limit
+    databaseName: rmn_hurricane
+    user: rmn_hurricane
+    region: oregon                 # must match the web service region
