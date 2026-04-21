@@ -60,7 +60,8 @@ services:
 
 databases:
   - name: rmn-hurricane-db
-    plan: starter                  # 1GB storage, 97 connection limit
+    plan: basic-256mb              # replaces deprecated starter plan, flexible-plan tier
+    diskSizeGB: 1                  # matches old-starter 1GB footprint
     databaseName: rmn_hurricane
     user: rmn_hurricane
     region: oregon                 # must match the web service region
