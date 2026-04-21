@@ -72,10 +72,19 @@ rmn_dashboard = ["templates/**/*.html", "static/**/*"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+# scripts/legacy/ holds archived prototype scripts — kept for reference
+# while we port pieces into src/rmn_dashboard/ingest/ over Weeks 2-4.
+# Not worth lint-churning code we're rewriting.
+extend-exclude = ["scripts/legacy"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "C4"]
 ignore = ["E501"]  # handled by formatter
+
+[tool.ruff.lint.per-file-ignores]
+# Alembic env.py has to manipulate sys.path before importing the package,
+# which intentionally puts non-stdlib imports below code.
+"alembic/env.py" = ["E402"]
 
 [tool.mypy]
 python_version = "3.11"

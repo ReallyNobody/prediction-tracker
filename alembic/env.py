@@ -22,11 +22,9 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from rmn_dashboard.config import settings  # noqa: E402
-from rmn_dashboard.database import normalize_database_url  # noqa: E402
-from rmn_dashboard.models import (
-    Base,  # noqa: E402  — importing the package ensures all models register
-)
+from rmn_dashboard.config import settings
+from rmn_dashboard.database import normalize_database_url
+from rmn_dashboard.models import Base  # importing the package registers all models
 
 config = context.config
 
