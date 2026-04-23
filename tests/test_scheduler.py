@@ -31,36 +31,29 @@ from rmn_dashboard.scheduler import (
 
 
 def test_build_scheduler_registers_kalshi_ingest_job() -> None:
+    # Scheduler is never started; no teardown needed (APScheduler would raise
+    # SchedulerNotRunningError on shutdown of an unstarted scheduler).
     scheduler = build_scheduler(interval_minutes=15, run_on_start=False)
-    try:
-        job = scheduler.get_job(KALSHI_JOB_ID)
-        assert job is not None
-        # APScheduler stores the trigger's interval as a timedelta.
-        assert job.trigger.interval.total_seconds() == 15 * 60
-        assert job.max_instances == 1
-        assert job.coalesce is True
-    finally:
-        scheduler.shutdown(wait=False)
+    job = scheduler.get_job(KALSHI_JOB_ID)
+    assert job is not None
+    # APScheduler stores the trigger's interval as a timedelta.
+    assert job.trigger.interval.total_seconds() == 15 * 60
+    assert job.max_instances == 1
+    assert job.coalesce is True
 
 
 def test_build_scheduler_run_on_start_pins_immediate_first_run() -> None:
     scheduler = build_scheduler(interval_minutes=15, run_on_start=True)
-    try:
-        job = scheduler.get_job(KALSHI_JOB_ID)
-        assert job.next_run_time is not None
-    finally:
-        scheduler.shutdown(wait=False)
+    job = scheduler.get_job(KALSHI_JOB_ID)
+    assert job.next_run_time is not None
 
 
 def test_build_scheduler_without_run_on_start_leaves_next_run_unset() -> None:
     scheduler = build_scheduler(interval_minutes=15, run_on_start=False)
-    try:
-        job = scheduler.get_job(KALSHI_JOB_ID)
-        # With run_on_start=False and the scheduler not started, the job has
-        # no pinned next_run_time — APScheduler would compute one on .start().
-        assert job.next_run_time is None
-    finally:
-        scheduler.shutdown(wait=False)
+    job = scheduler.get_job(KALSHI_JOB_ID)
+    # With run_on_start=False and the scheduler not started, the job has no
+    # pinned next_run_time — APScheduler would compute one on .start().
+    assert job.next_run_time is None
 
 
 def test_build_scheduler_accepts_injectable_job() -> None:
@@ -72,13 +65,10 @@ def test_build_scheduler_accepts_injectable_job() -> None:
         calls.append(1)
 
     scheduler = build_scheduler(interval_minutes=1, job=fake_job, run_on_start=False)
-    try:
-        job = scheduler.get_job(KALSHI_JOB_ID)
-        # Invoke the stored callable directly — no threads, no wall clock.
-        job.func()
-        assert calls == [1]
-    finally:
-        scheduler.shutdown(wait=False)
+    job = scheduler.get_job(KALSHI_JOB_ID)
+    # Invoke the stored callable directly — no threads, no wall clock.
+    job.func()
+    assert calls == [1]
 
 
 # ----- _run_kalshi_ingest_job ---------------------------------------------
