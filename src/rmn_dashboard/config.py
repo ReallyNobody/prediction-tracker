@@ -47,6 +47,11 @@ class Settings(BaseSettings):
 
     # --- Scheduler ---
     scheduler_enabled: bool = Field(default=False, description="Disabled in dev by default.")
+    kalshi_ingest_interval_minutes: int = Field(
+        default=15,
+        ge=1,
+        description="How often the scheduled Kalshi ingest job fires (minutes).",
+    )
 
     # --- Deployment ---
     host: str = Field(default="127.0.0.1")

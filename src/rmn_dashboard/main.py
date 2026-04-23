@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Request
@@ -12,15 +15,44 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from rmn_dashboard import __version__
+from rmn_dashboard.config import settings
 from rmn_dashboard.database import get_session
 from rmn_dashboard.models import CatLoss
+from rmn_dashboard.scheduler import build_scheduler
 from rmn_dashboard.services.markets import latest_hurricane_markets
+
+logger = logging.getLogger(__name__)
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 TEMPLATES_DIR = PACKAGE_DIR / "templates"
 STATIC_DIR = PACKAGE_DIR / "static"
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """Start the background scheduler on app startup and stop it on shutdown.
+
+    Gated by ``settings.scheduler_enabled`` — off in dev (so uvicorn --reload
+    doesn't double-fire every save) and in the test suite, on in prod via
+    env var. When disabled the app runs exactly as before.
+    """
+    scheduler = None
+    if settings.scheduler_enabled:
+        scheduler = build_scheduler(settings.kalshi_ingest_interval_minutes)
+        scheduler.start()
+        logger.info(
+            "Scheduler started; Kalshi ingest every %d minutes",
+            settings.kalshi_ingest_interval_minutes,
+        )
+    try:
+        yield
+    finally:
+        if scheduler is not None:
+            scheduler.shutdown(wait=False)
+            logger.info("Scheduler stopped")
+
 
 app = FastAPI(
     title="RMN Hurricane Dashboard",
@@ -29,6 +61,7 @@ app = FastAPI(
         "to pay for it — translated for people who don't speak insurance."
     ),
     version=__version__,
+    lifespan=lifespan,
 )
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
