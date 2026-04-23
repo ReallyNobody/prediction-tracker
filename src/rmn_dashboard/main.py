@@ -51,15 +51,6 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     doesn't double-fire every save) and in the test suite, on in prod via
     env var. When disabled the app runs exactly as before.
     """
-    # TEMP diagnostic — one more deploy's worth of visibility while we confirm
-    # the render.yaml env-var fix takes effect. Remove once the scheduler is
-    # observed firing cleanly in prod.
-    logger.info(
-        "Lifespan boot: scheduler_enabled=%r interval=%r app_env=%r",
-        settings.scheduler_enabled,
-        settings.kalshi_ingest_interval_minutes,
-        settings.app_env,
-    )
     scheduler = None
     if settings.scheduler_enabled:
         scheduler = build_scheduler(settings.kalshi_ingest_interval_minutes)
