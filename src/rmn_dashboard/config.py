@@ -26,7 +26,10 @@ class Settings(BaseSettings):
     )
 
     # --- Runtime ---
-    env: str = Field(default="development", description="development | production")
+    # Named ``app_env`` rather than ``env`` so pydantic-settings picks up the
+    # conventional ``APP_ENV`` environment variable (Render, Heroku, many
+    # others). A bare ``env`` field would map to ``ENV``, which nothing sets.
+    app_env: str = Field(default="development", description="development | production")
     debug: bool = Field(default=True)
     log_level: str = Field(default="INFO")
 

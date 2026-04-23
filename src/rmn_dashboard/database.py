@@ -56,7 +56,7 @@ def _make_engine() -> Engine:
 
     connect_args: dict[str, object] = {}
     engine_kwargs: dict[str, object] = {
-        "echo": settings.debug and settings.env == "development",
+        "echo": settings.debug and settings.app_env == "development",
         "future": True,
     }
 
