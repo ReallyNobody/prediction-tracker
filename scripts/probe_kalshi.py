@@ -30,12 +30,20 @@ from typing import Any
 
 import httpx
 
-from rmn_dashboard.scrapers.kalshi import KalshiConfigError, client_from_settings
+from rmn_dashboard.scrapers.kalshi import (
+    HURRICANE_SERIES,
+    KalshiConfigError,
+    client_from_settings,
+    fetch_hurricane_markets,
+)
 
-# Broad net on the first pass — we'd rather over-match and eyeball results
-# than miss a category because Kalshi used non-obvious phrasing.
+# Hurricane-adjacent keywords. Deliberately omits a bare "storm" — that
+# word alone pulls in sports teams (Melbourne Storm, Orlando Storm) and
+# snowstorm / thunderstorm markets we don't want. "Tropical storm" is
+# matched via the "tropical" token; landfall / cyclone / hurricane /
+# Atlantic-basin markets are covered explicitly.
 KEYWORDS = re.compile(
-    r"\b(hurricane|tropical|cyclone|storm|atlantic|named\s+storm|landfall)\b",
+    r"\b(hurricane|tropical|cyclone|landfall|atlantic\s+(?:basin|season|hurricane))\b",
     re.IGNORECASE,
 )
 
@@ -135,11 +143,30 @@ def main() -> int:
     try:
         print("Pulling open events from Kalshi (cursor-paginated)...")
         events = _paginate_events(client)
+
+        print(f"\nTotal open events collected: {len(events)}")
+        _print_report(_group_hits(events))
+
+        # End-to-end validation: fetch + normalize the configured hurricane
+        # series through the real scraper. Proves the full stack works against
+        # live Kalshi data, not just mocked transport.
+        print("\n" + "=" * 60)
+        print(f"Live fetch via fetch_hurricane_markets({list(HURRICANE_SERIES)})")
+        print("=" * 60)
+        markets = fetch_hurricane_markets(HURRICANE_SERIES, client=client)
+        print(f"Normalized {len(markets)} markets:\n")
+        for market in markets:
+            print(f"  [{market.series_ticker}] {market.ticker}")
+            print(f"    title:        {market.title}")
+            print(f"    yes/no bid:   ${market.yes_bid:.2f} / ${market.no_bid:.2f}")
+            print(f"    yes/no ask:   ${market.yes_ask:.2f} / ${market.no_ask:.2f}")
+            print(f"    vol (24h):    ${market.volume_24h:,.0f}")
+            print(f"    open interest: {market.open_interest:,.0f}")
+            print(f"    url:          {market.url}")
+            print()
     finally:
         client.close()
 
-    print(f"\nTotal open events collected: {len(events)}")
-    _print_report(_group_hits(events))
     return 0
 
 

@@ -45,6 +45,18 @@ from rmn_dashboard.config import settings
 logger = logging.getLogger(__name__)
 
 
+# Kalshi series tickers that host hurricane/tropical-storm markets.
+# Discovered 2026-04-23 via ``scripts/probe_kalshi.py`` against /events?status=open.
+# Re-run the probe periodically (especially during Atlantic season, Jun–Nov) to
+# catch new series Kalshi spins up for landfall, ACE index, regional markets,
+# etc. Add verified tickers here as they appear.
+HURRICANE_SERIES: tuple[str, ...] = (
+    "KXHURCTOT",  # Atlantic hurricane count (total, full season)
+    "KXHURCTOTMAJ",  # Major Atlantic hurricane count (Cat 3+)
+    "KXTROPSTORM",  # Tropical storm count (named storms)
+)
+
+
 class KalshiConfigError(RuntimeError):
     """Raised when Kalshi credentials are missing, unreadable, or wrong type."""
 
