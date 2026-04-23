@@ -55,9 +55,7 @@ def _test_engine() -> Generator[Engine, None, None]:
 @pytest.fixture
 def db_session(_test_engine: Engine) -> Generator[Session, None, None]:
     """Plain SQLAlchemy session for model-level tests."""
-    TestingSession = sessionmaker(
-        bind=_test_engine, autoflush=False, autocommit=False, future=True
-    )
+    TestingSession = sessionmaker(bind=_test_engine, autoflush=False, autocommit=False, future=True)
     session = TestingSession()
     try:
         yield session
@@ -68,9 +66,7 @@ def db_session(_test_engine: Engine) -> Generator[Session, None, None]:
 @pytest.fixture
 def client(_test_engine: Engine) -> Generator[TestClient, None, None]:
     """FastAPI TestClient wired to the in-memory DB via dependency override."""
-    TestingSession = sessionmaker(
-        bind=_test_engine, autoflush=False, autocommit=False, future=True
-    )
+    TestingSession = sessionmaker(bind=_test_engine, autoflush=False, autocommit=False, future=True)
 
     def _override_get_session() -> Generator[Session, None, None]:
         db = TestingSession()
