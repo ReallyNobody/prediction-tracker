@@ -38,6 +38,14 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     doesn't double-fire every save) and in the test suite, on in prod via
     env var. When disabled the app runs exactly as before.
     """
+    # TEMP diagnostic — confirm how env vars flow through pydantic on Render.
+    # Remove once the scheduler is verified firing in prod.
+    logger.info(
+        "Lifespan boot: scheduler_enabled=%r interval=%r env=%r",
+        settings.scheduler_enabled,
+        settings.kalshi_ingest_interval_minutes,
+        settings.env,
+    )
     scheduler = None
     if settings.scheduler_enabled:
         scheduler = build_scheduler(settings.kalshi_ingest_interval_minutes)
