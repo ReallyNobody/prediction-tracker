@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import re
 import sys
+import time
 from collections import defaultdict
 from typing import Any
 
@@ -39,21 +40,45 @@ KEYWORDS = re.compile(
 )
 
 EVENTS_PAGE_LIMIT = 200  # Kalshi's /events accepts up to 200 per page.
+PER_PAGE_SLEEP = 0.5  # Kalshi rate-limits aggressively; ~2 req/sec is safe.
+MAX_PAGES = 60  # 60 * 200 = 12,000 event ceiling. Enough to cover the surface.
+MAX_429_RETRIES = 4  # Exponential backoff: 1s, 2s, 4s, 8s.
+
+
+def _get_events_page(client: Any, params: dict[str, Any]) -> dict[str, Any]:
+    """GET /events with exponential backoff on 429."""
+    for attempt in range(MAX_429_RETRIES + 1):
+        try:
+            return client.get("/events", params=params)
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 429 and attempt < MAX_429_RETRIES:
+                wait = 2**attempt
+                print(f"    rate limited; backing off {wait}s", file=sys.stderr)
+                time.sleep(wait)
+                continue
+            raise
+    raise RuntimeError("unreachable")  # pragma: no cover
 
 
 def _paginate_events(client: Any) -> list[dict[str, Any]]:
-    """Pull every open event across cursor pages. Returns raw event dicts."""
+    """Pull open events across cursor pages. Returns whatever we got — if the
+    caller's loop is interrupted by a hard failure, we still want the partial
+    list to flow through to the report."""
     events: list[dict[str, Any]] = []
     cursor: str | None = None
-    page = 0
 
-    while True:
-        page += 1
+    for page in range(1, MAX_PAGES + 1):
         params: dict[str, Any] = {"status": "open", "limit": EVENTS_PAGE_LIMIT}
         if cursor:
             params["cursor"] = cursor
 
-        payload = client.get("/events", params=params)
+        try:
+            payload = _get_events_page(client, params)
+        except httpx.HTTPError as exc:
+            # Keep what we have so the report can still run over partial data.
+            print(f"WARNING: stopping at page {page}: {exc}", file=sys.stderr)
+            break
+
         batch = payload.get("events", [])
         events.extend(batch)
         print(f"  page {page}: +{len(batch)} events (running total: {len(events)})")
@@ -61,6 +86,10 @@ def _paginate_events(client: Any) -> list[dict[str, Any]]:
         cursor = payload.get("cursor") or None
         if not cursor:
             break
+
+        time.sleep(PER_PAGE_SLEEP)
+    else:
+        print(f"  stopped at MAX_PAGES={MAX_PAGES}; there may be more beyond this.")
 
     return events
 
@@ -105,17 +134,13 @@ def main() -> int:
 
     try:
         print("Pulling open events from Kalshi (cursor-paginated)...")
-        try:
-            events = _paginate_events(client)
-        except httpx.HTTPError as exc:
-            print(f"ERROR: Kalshi request failed: {exc}", file=sys.stderr)
-            return 1
-
-        print(f"\nTotal open events fetched: {len(events)}")
-        _print_report(_group_hits(events))
-        return 0
+        events = _paginate_events(client)
     finally:
         client.close()
+
+    print(f"\nTotal open events collected: {len(events)}")
+    _print_report(_group_hits(events))
+    return 0
 
 
 if __name__ == "__main__":
