@@ -184,6 +184,13 @@ class KalshiClient:
         headers = self._build_headers("GET", signed_path)
 
         response = self._http_client.get(url, params=params, headers=headers)
+        if response.is_error:
+            # Surface Kalshi's body on non-2xx — it almost always contains the
+            # actual cause (e.g. "invalid status filter 'active'"), which
+            # httpx's default HTTPStatusError hides. Logged at WARNING so it
+            # shows up in ordinary scraper runs, not only when debug is on.
+            body = response.text[:500]  # cap in case of HTML error pages
+            logger.warning("Kalshi %s %s → %s: %s", "GET", path, response.status_code, body)
         response.raise_for_status()
         return response.json()
 
@@ -268,7 +275,10 @@ def fetch_hurricane_markets(
                     "/markets",
                     params={
                         "series_ticker": series_ticker,
-                        "status": "active",
+                        # Kalshi v2 uses "open" (not "active" — the legacy
+                        # scraper's value 400s now). Valid values: unopened,
+                        # open, closed, settled.
+                        "status": "open",
                         "limit": 100,
                     },
                 )

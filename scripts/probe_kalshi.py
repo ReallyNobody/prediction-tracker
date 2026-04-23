@@ -22,6 +22,7 @@ Read-only. No DB writes. Safe to run repeatedly.
 
 from __future__ import annotations
 
+import logging
 import re
 import sys
 import time
@@ -134,6 +135,10 @@ def _print_report(by_series: dict[str, list[dict[str, Any]]]) -> None:
 
 
 def main() -> int:
+    # Surface WARNING logs from the scraper (e.g. Kalshi 4xx response bodies)
+    # so this script is a useful diagnostic, not just a happy-path runner.
+    logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
+
     try:
         client = client_from_settings()
     except KalshiConfigError as exc:
