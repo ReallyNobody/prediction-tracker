@@ -1,0 +1,122 @@
+#!/usr/bin/env python3
+"""Probe Kalshi's public event namespace for hurricane-related markets.
+
+Week 2 Day 6 — ticker discovery. The legacy scraper hardcoded weather-station
+series tickers ("KXHIGHLAX", etc.) that aren't hurricane markets. Before we
+can plug real inputs into ``fetch_hurricane_markets``, we need to know what
+Kalshi actually calls its hurricane/tropical-storm markets today.
+
+Strategy: walk /events with ``status=open`` (cursor-paginated), filter titles
+by a keyword regex, and group hits by ``series_ticker``. The output is a
+shortlist we can paste into a config or turn into a seeded table.
+
+Usage
+-----
+    cd ~/Dev/Predict
+    . .venv/bin/activate
+    python scripts/probe_kalshi.py
+
+Requires ``KALSHI_API_KEY_ID`` and ``KALSHI_PRIVATE_KEY_PATH`` in ``.env``.
+Read-only. No DB writes. Safe to run repeatedly.
+"""
+
+from __future__ import annotations
+
+import re
+import sys
+from collections import defaultdict
+from typing import Any
+
+import httpx
+
+from rmn_dashboard.scrapers.kalshi import KalshiConfigError, client_from_settings
+
+# Broad net on the first pass — we'd rather over-match and eyeball results
+# than miss a category because Kalshi used non-obvious phrasing.
+KEYWORDS = re.compile(
+    r"\b(hurricane|tropical|cyclone|storm|atlantic|named\s+storm|landfall)\b",
+    re.IGNORECASE,
+)
+
+EVENTS_PAGE_LIMIT = 200  # Kalshi's /events accepts up to 200 per page.
+
+
+def _paginate_events(client: Any) -> list[dict[str, Any]]:
+    """Pull every open event across cursor pages. Returns raw event dicts."""
+    events: list[dict[str, Any]] = []
+    cursor: str | None = None
+    page = 0
+
+    while True:
+        page += 1
+        params: dict[str, Any] = {"status": "open", "limit": EVENTS_PAGE_LIMIT}
+        if cursor:
+            params["cursor"] = cursor
+
+        payload = client.get("/events", params=params)
+        batch = payload.get("events", [])
+        events.extend(batch)
+        print(f"  page {page}: +{len(batch)} events (running total: {len(events)})")
+
+        cursor = payload.get("cursor") or None
+        if not cursor:
+            break
+
+    return events
+
+
+def _group_hits(events: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    """Keep only events whose title matches our keyword regex, grouped by series."""
+    by_series: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for event in events:
+        title = event.get("title") or ""
+        if KEYWORDS.search(title):
+            by_series[event.get("series_ticker") or "<no-series>"].append(event)
+    return by_series
+
+
+def _print_report(by_series: dict[str, list[dict[str, Any]]]) -> None:
+    if not by_series:
+        print("\nNo hurricane-related events found in /events?status=open.")
+        print("Hurricane markets may only list during/near Atlantic season (Jun–Nov).")
+        return
+
+    total = sum(len(v) for v in by_series.values())
+    print(f"\nHurricane-candidate events: {total} across {len(by_series)} series\n")
+
+    for series in sorted(by_series):
+        hits = by_series[series]
+        print(f"  {series}  ({len(hits)} events)")
+        for event in hits[:5]:
+            ticker = event.get("event_ticker") or "?"
+            title = event.get("title") or ""
+            print(f"    - {ticker}: {title}")
+        if len(hits) > 5:
+            print(f"    ... and {len(hits) - 5} more")
+        print()
+
+
+def main() -> int:
+    try:
+        client = client_from_settings()
+    except KalshiConfigError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+
+    try:
+        print("Pulling open events from Kalshi (cursor-paginated)...")
+        try:
+            events = _paginate_events(client)
+        except httpx.HTTPError as exc:
+            print(f"ERROR: Kalshi request failed: {exc}", file=sys.stderr)
+            return 1
+
+        print(f"\nTotal open events fetched: {len(events)}")
+        _print_report(_group_hits(events))
+        return 0
+    finally:
+        client.close()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
