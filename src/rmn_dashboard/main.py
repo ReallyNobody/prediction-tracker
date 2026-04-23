@@ -21,6 +21,19 @@ from rmn_dashboard.models import CatLoss
 from rmn_dashboard.scheduler import build_scheduler
 from rmn_dashboard.services.markets import latest_hurricane_markets
 
+# Configure logging before any module-level logger calls. Python's default
+# root logger level is WARNING, which silently drops every ``logger.info(...)``
+# call in our code — including the scheduler's "persisted N rows" confirmation.
+# uvicorn and gunicorn configure their own named loggers (uvicorn.access,
+# uvicorn.error, gunicorn.error) explicitly, so this root-level basicConfig
+# doesn't conflict with theirs. pytest's ``caplog`` fixture attaches its
+# handler at test time (after this import-time call), so test capture still
+# works.
+logging.basicConfig(
+    level=settings.log_level.upper(),
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+
 logger = logging.getLogger(__name__)
 
 PACKAGE_DIR = Path(__file__).resolve().parent

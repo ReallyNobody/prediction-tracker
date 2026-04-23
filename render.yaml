@@ -26,10 +26,17 @@ services:
     # Run migrations on every deploy, then boot gunicorn with uvicorn workers.
     # gunicorn's pre-fork model means ``alembic upgrade head`` runs once in the
     # master before workers spawn, so there's no migration race.
+    #
+    # ``--workers 1`` is deliberate and load-bearing. The APScheduler in
+    # ``rmn_dashboard.scheduler`` lives inside the web process; multiple
+    # workers would spawn one scheduler each and double-fire every ingest
+    # (duplicate Kalshi snapshot rows, 2× rate-limit pressure). If we ever
+    # need real web concurrency, the scheduler moves to a separate Render
+    # background-worker service — see the scheduler module docstring.
     startCommand: |
       alembic upgrade head && \
       gunicorn rmn_dashboard.main:app \
-        --workers 2 \
+        --workers 1 \
         --worker-class uvicorn.workers.UvicornWorker \
         --bind 0.0.0.0:$PORT \
         --access-logfile - \
