@@ -27,9 +27,38 @@
       <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">
         Markets on it
       </h2>
-      <div class="mt-3 text-slate-400">
-        <p class="text-sm">Kalshi + Polymarket contracts land in Week 4.</p>
-      </div>
+      {% if markets %}
+        <ul class="mt-3 divide-y divide-slate-100">
+          {% for m in markets %}
+            <li class="py-2">
+              <a href="https://kalshi.com/markets/{{ m.ticker }}"
+                 target="_blank" rel="noopener"
+                 class="block hover:bg-slate-50 -mx-1 px-1 rounded">
+                <p class="text-sm text-slate-800 leading-snug">{{ m.title }}</p>
+                <p class="mt-1 text-xs text-slate-500 flex justify-between gap-2">
+                  <span>
+                    Yes
+                    <span class="font-mono text-slate-700">
+                      {% if m.yes_price is not none %}{{ '%.0f'|format(m.yes_price * 100) }}¢{% else %}—{% endif %}
+                    </span>
+                  </span>
+                  <span>
+                    OI
+                    <span class="font-mono text-slate-700">
+                      {% if m.open_interest is not none %}{{ '{:,.0f}'.format(m.open_interest) }}{% else %}—{% endif %}
+                    </span>
+                  </span>
+                </p>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+        <p class="mt-3 text-xs text-slate-400">Source: Kalshi · updated on each scrape.</p>
+      {% else %}
+        <div class="mt-3 text-slate-400">
+          <p class="text-sm">No hurricane markets in the database yet — run the Kalshi ingest job to populate.</p>
+        </div>
+      {% endif %}
     </aside>
 
     {#  Panel 2 — Carrier exposure map  #}

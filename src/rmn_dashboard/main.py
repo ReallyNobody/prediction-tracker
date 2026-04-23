@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from rmn_dashboard import __version__
 from rmn_dashboard.database import get_session
 from rmn_dashboard.models import CatLoss
+from rmn_dashboard.services.markets import latest_hurricane_markets
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 TEMPLATES_DIR = PACKAGE_DIR / "templates"
@@ -38,8 +39,9 @@ async def index(
     request: Request,
     db: Session = Depends(get_session),
 ) -> HTMLResponse:
-    """The main dashboard page — six panel shells, no live data yet."""
+    """The main dashboard page — panel shells plus the live Kalshi markets list."""
     cat_loss_count = db.scalar(select(func.count()).select_from(CatLoss)) or 0
+    markets = latest_hurricane_markets(db)
 
     return templates.TemplateResponse(
         request,
@@ -48,6 +50,7 @@ async def index(
             "version": __version__,
             "build_status": "Scaffold · Week 1",
             "cat_loss_count": cat_loss_count,
+            "markets": markets,
         },
     )
 
