@@ -30,7 +30,7 @@ from __future__ import annotations
 import base64
 import logging
 import time
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
@@ -55,6 +55,12 @@ HURRICANE_SERIES: tuple[str, ...] = (
     "KXHURCTOTMAJ",  # Major Atlantic hurricane count (Cat 3+)
     "KXTROPSTORM",  # Tropical storm count (named storms)
 )
+
+# Rate-limit tunables — Kalshi will 429 on bursts of a few back-to-back calls.
+# Matches ``scripts/probe_kalshi.py``: a short courtesy sleep between series,
+# plus exponential backoff (1s, 2s, 4s, 8s) on any 429 inside the client.
+PER_SERIES_SLEEP = 0.5
+MAX_429_RETRIES = 4
 
 
 class KalshiConfigError(RuntimeError):
@@ -142,6 +148,8 @@ class KalshiClient:
         private_key: _Signer,
         base_url: str | None = None,
         http_client: httpx.Client | None = None,
+        max_429_retries: int = MAX_429_RETRIES,
+        sleep_fn: Callable[[float], None] = time.sleep,
     ) -> None:
         if not api_key_id:
             raise KalshiConfigError("Missing Kalshi API key ID.")
@@ -150,6 +158,8 @@ class KalshiClient:
         self._base_url = (base_url or settings.kalshi_base_url).rstrip("/")
         self._http_client = http_client or httpx.Client(timeout=30.0)
         self._owns_http_client = http_client is None
+        self._max_429_retries = max_429_retries
+        self._sleep = sleep_fn
 
     def __enter__(self) -> KalshiClient:
         return self
@@ -171,8 +181,11 @@ class KalshiClient:
         }
 
     def get(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
-        """Authenticated GET. Returns the parsed JSON body.
+        """Authenticated GET with 429 exponential backoff. Returns parsed JSON.
 
+        On HTTP 429 we back off ``2**attempt`` seconds (1, 2, 4, 8…) and
+        re-sign the request — the timestamp has to be fresh each attempt or
+        Kalshi will reject the retry. Any non-429 error surfaces immediately.
         Raises ``httpx.HTTPError`` subclasses on transport or status issues —
         callers decide whether to log-and-skip or propagate.
         """
@@ -181,18 +194,36 @@ class KalshiClient:
 
         url = self._base_url + path
         signed_path = urlparse(url).path  # e.g. /trade-api/v2/markets
-        headers = self._build_headers("GET", signed_path)
 
-        response = self._http_client.get(url, params=params, headers=headers)
-        if response.is_error:
-            # Surface Kalshi's body on non-2xx — it almost always contains the
-            # actual cause (e.g. "invalid status filter 'active'"), which
-            # httpx's default HTTPStatusError hides. Logged at WARNING so it
-            # shows up in ordinary scraper runs, not only when debug is on.
-            body = response.text[:500]  # cap in case of HTML error pages
-            logger.warning("Kalshi %s %s → %s: %s", "GET", path, response.status_code, body)
-        response.raise_for_status()
-        return response.json()
+        for attempt in range(self._max_429_retries + 1):
+            # Re-sign on every attempt: Kalshi rejects stale timestamps.
+            headers = self._build_headers("GET", signed_path)
+            response = self._http_client.get(url, params=params, headers=headers)
+
+            if response.status_code == 429 and attempt < self._max_429_retries:
+                wait = 2**attempt
+                logger.warning(
+                    "Kalshi GET %s → 429; backing off %ss (attempt %d/%d)",
+                    path,
+                    wait,
+                    attempt + 1,
+                    self._max_429_retries,
+                )
+                self._sleep(wait)
+                continue
+
+            if response.is_error:
+                # Surface Kalshi's body on non-2xx — it almost always contains
+                # the actual cause (e.g. "invalid status filter 'active'"),
+                # which httpx's default HTTPStatusError hides. Logged at
+                # WARNING so it shows up in ordinary scraper runs, not only
+                # when debug is on.
+                body = response.text[:500]  # cap in case of HTML error pages
+                logger.warning("Kalshi GET %s → %s: %s", path, response.status_code, body)
+            response.raise_for_status()
+            return response.json()
+
+        raise RuntimeError("unreachable")  # pragma: no cover
 
 
 def client_from_settings(http_client: httpx.Client | None = None) -> KalshiClient:
@@ -254,14 +285,20 @@ def _normalize_market(raw: dict[str, Any], series_ticker: str) -> KalshiMarket:
 def fetch_hurricane_markets(
     series_tickers: Iterable[str],
     client: KalshiClient | None = None,
+    sleep_fn: Callable[[float], None] = time.sleep,
+    per_series_sleep: float = PER_SERIES_SLEEP,
 ) -> list[KalshiMarket]:
     """Fetch active markets across the given series tickers, normalized.
 
-    Iterates the series sequentially (Kalshi rate-limits are generous but not
-    infinite). A per-series failure is logged and skipped — the caller gets
-    whatever succeeded. If ``client`` is omitted, one is built from settings
-    and closed on exit; pass an explicit client (typically in tests, or to
-    reuse a long-lived pool) to control lifecycle yourself.
+    Iterates the series sequentially and paces the calls with a short sleep
+    between series — Kalshi 429s on even 2–3 back-to-back ``/markets`` calls.
+    The client itself retries inside a single call with exponential backoff,
+    so this pacing is the pre-emptive belt-and-suspenders layer.
+
+    A per-series failure is logged and skipped — the caller gets whatever
+    succeeded. If ``client`` is omitted, one is built from settings and closed
+    on exit; pass an explicit client (typically in tests, or to reuse a
+    long-lived pool) to control lifecycle yourself.
     """
     owns_client = client is None
     if client is None:
@@ -269,7 +306,13 @@ def fetch_hurricane_markets(
 
     try:
         markets: list[KalshiMarket] = []
-        for series_ticker in series_tickers:
+        for index, series_ticker in enumerate(series_tickers):
+            if index > 0 and per_series_sleep > 0:
+                # Pre-emptive pacing: avoid tripping Kalshi's rate limiter on
+                # the next call. Skipped for the first series (nothing to
+                # pace against) and when tests inject per_series_sleep=0.
+                sleep_fn(per_series_sleep)
+
             try:
                 payload = client.get(
                     "/markets",

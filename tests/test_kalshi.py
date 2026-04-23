@@ -46,8 +46,15 @@ def _make_client(
     signer: StubSigner | None = None,
     api_key_id: str = "test-api-key-id",
     base_url: str = "https://api.example.com/trade-api/v2",
+    sleep_fn: Callable[[float], None] | None = None,
+    max_429_retries: int = 4,
 ) -> tuple[KalshiClient, StubSigner]:
-    """Construct a KalshiClient wired to an in-process MockTransport."""
+    """Construct a KalshiClient wired to an in-process MockTransport.
+
+    ``sleep_fn`` defaults to a no-op so tests that don't care about backoff
+    pacing never actually sleep. Tests that want to assert the sleep schedule
+    should pass their own recorder.
+    """
     signer = signer or StubSigner()
     transport = httpx.MockTransport(handler)
     http = httpx.Client(transport=transport)
@@ -56,6 +63,8 @@ def _make_client(
         private_key=signer,
         base_url=base_url,
         http_client=http,
+        max_429_retries=max_429_retries,
+        sleep_fn=sleep_fn or (lambda _seconds: None),
     )
     return client, signer
 
@@ -205,7 +214,10 @@ def test_fetch_hurricane_markets_continues_past_per_series_failure() -> None:
         return httpx.Response(200, json={"markets": [_SAMPLE_RAW_MARKET]})
 
     client, _ = _make_client(handler)
-    markets = fetch_hurricane_markets(["GOOD", "BAD", "ALSO-GOOD"], client=client)
+    # per_series_sleep=0 so this test doesn't pay for real wall time.
+    markets = fetch_hurricane_markets(
+        ["GOOD", "BAD", "ALSO-GOOD"], client=client, per_series_sleep=0
+    )
 
     assert [m.series_ticker for m in markets] == ["GOOD", "ALSO-GOOD"]
 
@@ -216,6 +228,81 @@ def test_fetch_hurricane_markets_returns_empty_for_empty_input() -> None:
 
     client, _ = _make_client(handler)
     assert fetch_hurricane_markets([], client=client) == []
+
+
+def test_fetch_hurricane_markets_paces_sleep_between_series() -> None:
+    """Sleep once before each series after the first — not before the first,
+    and not after the last. Three series → two pacing sleeps."""
+    sleeps: list[float] = []
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"markets": []})
+
+    client, _ = _make_client(handler)
+    fetch_hurricane_markets(
+        ["A", "B", "C"],
+        client=client,
+        sleep_fn=sleeps.append,
+        per_series_sleep=0.5,
+    )
+    assert sleeps == [0.5, 0.5]
+
+
+# ----- KalshiClient 429 retry ---------------------------------------------
+
+
+def test_client_retries_on_429_then_succeeds() -> None:
+    """One 429 followed by a 200 should transparently succeed after a single
+    backoff sleep of 1s (2**0)."""
+    sleeps: list[float] = []
+    calls: list[int] = []
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        if len(calls) == 1:
+            return httpx.Response(429, json={"error": "too_many_requests"})
+        return httpx.Response(200, json={"markets": []})
+
+    client, _ = _make_client(handler, sleep_fn=sleeps.append)
+    result = client.get("/markets")
+
+    assert result == {"markets": []}
+    assert len(calls) == 2  # one 429 + one 200
+    assert sleeps == [1]  # 2**0 on the first retry
+
+
+def test_client_429_retry_exhausts_and_raises() -> None:
+    """When every attempt returns 429, the client exhausts retries and raises
+    HTTPStatusError. Sleep schedule is 1, 2, 4, 8 for the 4 default retries."""
+    sleeps: list[float] = []
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(429, json={"error": "too_many_requests"})
+
+    client, _ = _make_client(handler, sleep_fn=sleeps.append, max_429_retries=4)
+    with pytest.raises(httpx.HTTPStatusError):
+        client.get("/markets")
+
+    # One sleep per retry attempt; the final attempt does not sleep before raising.
+    assert sleeps == [1, 2, 4, 8]
+
+
+def test_client_does_not_retry_on_non_429_error() -> None:
+    """A 500 (or any non-429 error) must raise on the first attempt — no
+    backoff, no extra calls."""
+    sleeps: list[float] = []
+    calls: list[int] = []
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        return httpx.Response(500, json={"error": "boom"})
+
+    client, _ = _make_client(handler, sleep_fn=sleeps.append)
+    with pytest.raises(httpx.HTTPStatusError):
+        client.get("/markets")
+
+    assert len(calls) == 1
+    assert sleeps == []
 
 
 # ----- client_from_settings + load_private_key ----------------------------
