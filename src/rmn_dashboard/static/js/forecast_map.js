@@ -142,20 +142,30 @@
         allLayers.push(coneLayer);
       }
 
-      // 5-day track points — small circles with hover popups
+      // 5-day track points.
+      //
+      // Production shape (NHC _5day_pts parsed via
+      // rmn_dashboard.scrapers.nhc_shapefiles): a list of GeoJSON
+      // Features, each a Point geometry with properties carrying the
+      // DBF fields verbatim (ADVISNUM, LAT, LON, MAXWIND, FLDATELBL,
+      // TCDVLP, ...). Render via L.geoJSON with a pointToLayer callback
+      // so we keep the circle-marker styling rather than Leaflet's
+      // default pin icon.
       const points = forecast.forecast_5day_points || [];
-      points.forEach(function (pt) {
-        if (typeof pt.latitude_deg !== "number" || typeof pt.longitude_deg !== "number") {
-          return;
-        }
-        const marker = L.circleMarker(
-          [pt.latitude_deg, pt.longitude_deg],
-          FORECAST_POINT_STYLE,
-        )
-          .bindPopup(buildPointPopup(label, pt))
-          .addTo(map);
-        allLayers.push(marker);
-      });
+      if (points.length > 0) {
+        const pointsLayer = L.geoJSON(
+          { type: "FeatureCollection", features: points },
+          {
+            pointToLayer: function (feature, latlng) {
+              return L.circleMarker(latlng, FORECAST_POINT_STYLE);
+            },
+            onEachFeature: function (feature, layer) {
+              layer.bindPopup(buildPointPopup(label, feature.properties || {}));
+            },
+          },
+        ).addTo(map);
+        allLayers.push(pointsLayer);
+      }
 
       // Current-position marker (larger, different colour)
       if (
@@ -195,14 +205,28 @@
     }
   }
 
-  function buildPointPopup(stormLabel, pt) {
-    // Basic popup. Intentionally plain — the panel's job is the spatial
-    // picture, not a scrollable data grid.
+  function buildPointPopup(stormLabel, props) {
+    // Read from DBF properties — NHC's `_5day_pts` shapefile publishes
+    // FLDATELBL (human-readable valid-time label), MAXWIND (kt), and
+    // TCDVLP (development stage code, e.g. "H" / "S" / "D"). Field
+    // names are upper-case per the DBF schema; we fall back to lower-
+    // case variants just in case a future NHC release changes that.
+    const validLabel = props.FLDATELBL || props.fldatelbl || props.valid_at;
+    const maxWind = pickNumber(props.MAXWIND, props.maxwind, props.intensity_kt);
+    const devStage = props.TCDVLP || props.tcdvlp || props.classification;
+
     const parts = [stormLabel];
-    if (pt.valid_at) parts.push("Valid: " + pt.valid_at);
-    if (typeof pt.intensity_kt === "number") parts.push(pt.intensity_kt + " kt");
-    if (pt.classification) parts.push(pt.classification);
+    if (validLabel) parts.push("Valid: " + validLabel);
+    if (maxWind !== null) parts.push(maxWind + " kt");
+    if (devStage) parts.push(devStage);
     return parts.join("<br>");
+  }
+
+  function pickNumber(/* ...candidates */) {
+    for (let i = 0; i < arguments.length; i++) {
+      if (typeof arguments[i] === "number") return arguments[i];
+    }
+    return null;
   }
 
   function buildCurrentPopup(stormLabel, position) {
