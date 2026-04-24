@@ -18,6 +18,9 @@ probability), so what matters is:
 
 from __future__ import annotations
 
+import warnings
+
+from sqlalchemy.exc import SAWarning
 from sqlalchemy.orm import Session
 
 from rmn_dashboard.dev.seed_ian import NHC_ID, WSP_BAND_CONFIG, seed
@@ -160,8 +163,20 @@ def test_seed_clear_flag_replaces_previous_row(db_session: Session) -> None:
     storm.name = "MUTATED"
     db_session.commit()
 
-    seed(db_session, clear=True)
-    db_session.commit()
+    # Capture SQLAlchemy warnings during the clear+reseed. An "identity
+    # map already had an identity for ..." SAWarning here means
+    # ``_clear_existing`` forgot to ``expunge_all()`` after deleting,
+    # and the next PK-reusing insert tripped the identity-map guard.
+    # Silent today — we want it to stay silent.
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", SAWarning)
+        seed(db_session, clear=True)
+        db_session.commit()
+    identity_warnings = [w for w in caught if "identity map already had" in str(w.message)]
+    assert not identity_warnings, (
+        f"_clear_existing should expunge before re-insert; got: "
+        f"{[str(w.message) for w in identity_warnings]}"
+    )
 
     storm = db_session.query(Storm).filter_by(nhc_id=NHC_ID).one()
     # ``clear=True`` should have dropped the mutated row and re-inserted

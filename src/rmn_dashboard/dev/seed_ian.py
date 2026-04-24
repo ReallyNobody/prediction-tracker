@@ -321,9 +321,17 @@ def _build_wsp_geojson() -> dict:
 def _clear_existing(db: Session) -> None:
     """Drop Ian's Storm row (cascade-deletes observations + forecasts
     via ``ondelete=CASCADE`` on their FKs).
+
+    Expunges the session identity map afterward so a subsequent
+    re-insert doesn't collide with stale in-memory objects. SQLite
+    without AUTOINCREMENT reuses ROWIDs, so the fresh row gets the
+    same PK as the one we just deleted — and SQLAlchemy warns when
+    it flushes a new Python object claiming an identity another
+    (still-tracked, now-detached) object already owns.
     """
     db.execute(delete(Storm).where(Storm.nhc_id == NHC_ID))
     db.commit()
+    db.expunge_all()
 
 
 def _upsert_storm(db: Session) -> Storm:
