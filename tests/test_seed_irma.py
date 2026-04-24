@@ -76,14 +76,26 @@ def test_seeded_forecast_is_visible_to_service(db_session: Session) -> None:
 
 
 def test_seed_clear_flag_replaces_previous_row(db_session: Session) -> None:
-    """--clear drops the old Storm row (and cascades) before re-seeding."""
+    """``--clear`` drops the old Storm row (and cascades) before re-seeding.
+
+    We prove the replacement by mutating the seeded row, running the
+    seed with ``clear=True``, and asserting the mutation is gone. A PK
+    check would be wrong here — SQLite without AUTOINCREMENT reuses
+    ROWIDs after a delete, so the surrogate ID can legitimately stay
+    at 1 even when the row was actually replaced.
+    """
     seed(db_session)
     db_session.commit()
-    first_storm_id = db_session.query(Storm).filter_by(nhc_id=NHC_ID).one().id
+    storm = db_session.query(Storm).filter_by(nhc_id=NHC_ID).one()
+    storm.name = "MUTATED"
+    db_session.commit()
 
     seed(db_session, clear=True)
     db_session.commit()
-    second_storm_id = db_session.query(Storm).filter_by(nhc_id=NHC_ID).one().id
 
-    # With a clean delete + insert, the surrogate PK should advance.
-    assert second_storm_id != first_storm_id
+    storm = db_session.query(Storm).filter_by(nhc_id=NHC_ID).one()
+    # ``clear=True`` should have dropped the mutated row and re-inserted
+    # the canonical seeded data.
+    assert storm.name == "Irma"
+    # And only one row — no duplicate from the re-seed.
+    assert db_session.query(Storm).filter_by(nhc_id=NHC_ID).count() == 1
