@@ -62,6 +62,7 @@
     const mapEl = document.getElementById("forecast-map");
     const emptyEl = document.getElementById("forecast-map-empty");
     const advisoryEl = document.getElementById("forecast-map-advisory");
+    const detailsEl = document.getElementById("forecast-storm-details");
 
     // The map div only exists on the dashboard index. Script is loaded
     // from base.html on every page in principle, but we scope early.
@@ -78,6 +79,11 @@
       })
       .then(function (payload) {
         const storms = (payload && payload.storms) || [];
+        // Populate the details block unconditionally — it handles the
+        // empty case by clearing itself, so an off-season page has
+        // blank space (matching the empty-state copy tone) rather than
+        // a stale readout from a previous poll.
+        populateStormDetails(detailsEl, storms);
         if (storms.length === 0) {
           showEmptyState(emptyEl, mapEl);
           return;
@@ -86,8 +92,11 @@
       })
       .catch(function (err) {
         // On fetch failure show a distinct message — a silent empty
-        // state would hide a broken endpoint during incidents.
+        // state would hide a broken endpoint during incidents. Also
+        // clear the details block so a stale readout doesn't sit there
+        // while the error banner claims the feed is broken.
         console.error("forecast-map fetch failed", err);
+        populateStormDetails(detailsEl, []);
         emptyEl.innerHTML =
           '<p class="text-sm text-rose-500">Forecast feed unavailable — try refreshing.</p>';
         mapEl.classList.add("hidden");
@@ -238,5 +247,149 @@
       parts.push(position.pressure_mb + " mb");
     if (position.classification) parts.push(position.classification);
     return parts.join("<br>");
+  }
+
+  // --- Per-storm details readout (below the map) -----------------------
+
+  // Translates the three "storm is doing X right now" facts that live
+  // in entry.storm + entry.current_position into a one-line readout.
+  // The map already shows *where* the storm is; this block answers
+  // *what* it is (category), *how strong* (winds, pressure), and
+  // *which way it's heading*. Same data as the current-position popup,
+  // just always visible instead of requiring a click.
+
+  function populateStormDetails(detailsEl, storms) {
+    // Defensive: if the details element isn't in the DOM (e.g. a
+    // future page that loads this script but skips the readout), no-op
+    // rather than crash.
+    if (!detailsEl) {
+      return;
+    }
+    if (!storms || storms.length === 0) {
+      detailsEl.innerHTML = "";
+      return;
+    }
+    // Storms arrive pre-sorted by nhc_id from the service layer; we
+    // keep that order so the readout matches whatever the map and the
+    // advisory-timestamp label are reflecting.
+    detailsEl.innerHTML = storms.map(buildStormDetailRow).join("");
+  }
+
+  function buildStormDetailRow(entry) {
+    const storm = (entry && entry.storm) || {};
+    const pos = entry && entry.current_position; // may be null
+    const parts = [];
+
+    const name = storm.name || storm.nhc_id || "Unnamed";
+    parts.push('<strong class="text-slate-900">' + escapeHtml(name) + "</strong>");
+
+    const category = categoryLabel(pos, storm);
+    if (category) {
+      parts.push('<span class="text-slate-600">' + escapeHtml(category) + "</span>");
+    }
+
+    if (pos && typeof pos.intensity_kt === "number") {
+      parts.push(
+        '<span class="font-mono text-slate-700">' + pos.intensity_kt + " kt</span>",
+      );
+    }
+    if (pos && typeof pos.pressure_mb === "number") {
+      parts.push(
+        '<span class="font-mono text-slate-700">' + pos.pressure_mb + " mb</span>",
+      );
+    }
+
+    const movement = movementLabel(pos);
+    if (movement) {
+      parts.push('<span class="text-slate-600">' + escapeHtml(movement) + "</span>");
+    }
+
+    // Row styling: small vertical padding, dot separators via spans so
+    // they stay colour-independent and won't get picked up by
+    // selection/copy as part of the names. divide-y on the parent
+    // draws the inter-row rule.
+    return (
+      '<div class="py-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">' +
+      parts.join('<span class="text-slate-300">·</span>') +
+      "</div>"
+    );
+  }
+
+  function categoryLabel(pos, storm) {
+    // Prefer Saffir-Simpson category when winds are hurricane-force,
+    // because "Cat 3" is how underwriters and newsrooms refer to
+    // storms. Below hurricane force fall back to the storm_type string
+    // ("Tropical Storm", "Tropical Depression") so users don't see a
+    // naked classification code like "TS".
+    const stype = storm.storm_type || "";
+    const kt = pos && typeof pos.intensity_kt === "number" ? pos.intensity_kt : null;
+
+    if (kt !== null) {
+      // Saffir-Simpson thresholds (kt), per NHC:
+      //   Cat 5 ≥ 137, Cat 4 ≥ 113, Cat 3 ≥ 96, Cat 2 ≥ 83, Cat 1 ≥ 64
+      let cat = null;
+      if (kt >= 137) cat = "Cat 5";
+      else if (kt >= 113) cat = "Cat 4";
+      else if (kt >= 96) cat = "Cat 3";
+      else if (kt >= 83) cat = "Cat 2";
+      else if (kt >= 64) cat = "Cat 1";
+      if (cat) {
+        return stype ? stype + " · " + cat : cat;
+      }
+    }
+    return stype || null;
+  }
+
+  function movementLabel(pos) {
+    if (!pos) return null;
+    const dir = pos.movement_dir_deg;
+    const speed = pos.movement_speed_mph;
+    const haveDir = typeof dir === "number";
+    const haveSpeed = typeof speed === "number";
+    if (!haveDir && !haveSpeed) return null;
+    if (haveDir && haveSpeed) {
+      return "Moving " + degreesToCardinal(dir) + " at " + speed + " mph";
+    }
+    if (haveDir) return "Moving " + degreesToCardinal(dir);
+    return "Moving at " + speed + " mph";
+  }
+
+  // 16-point compass rose → matches the resolution NHC publishes in
+  // its advisory text products (e.g. "NORTH-NORTHEAST OR 015 DEGREES").
+  // Finer than 16-point would read as false precision given NHC
+  // rounds its own movement headings to 5 degrees.
+  const CARDINAL_16 = [
+    "N",
+    "NNE",
+    "NE",
+    "ENE",
+    "E",
+    "ESE",
+    "SE",
+    "SSE",
+    "S",
+    "SSW",
+    "SW",
+    "WSW",
+    "W",
+    "WNW",
+    "NW",
+    "NNW",
+  ];
+
+  function degreesToCardinal(deg) {
+    // Normalize to [0, 360), then bucket into 22.5° slices centered on
+    // each cardinal.
+    const normalized = ((deg % 360) + 360) % 360;
+    const idx = Math.round(normalized / 22.5) % 16;
+    return CARDINAL_16[idx];
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
   }
 })();

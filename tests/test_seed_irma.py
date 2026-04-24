@@ -10,6 +10,9 @@ seeded rows as if they'd come through the production NHC parser.
 
 from __future__ import annotations
 
+import warnings
+
+from sqlalchemy.exc import SAWarning
 from sqlalchemy.orm import Session
 
 from rmn_dashboard.dev.seed_irma import NHC_ID, seed
@@ -76,14 +79,38 @@ def test_seeded_forecast_is_visible_to_service(db_session: Session) -> None:
 
 
 def test_seed_clear_flag_replaces_previous_row(db_session: Session) -> None:
-    """--clear drops the old Storm row (and cascades) before re-seeding."""
+    """``--clear`` drops the old Storm row (and cascades) before re-seeding.
+
+    We prove the replacement by mutating the seeded row, running the
+    seed with ``clear=True``, and asserting the mutation is gone. A PK
+    check would be wrong here — SQLite without AUTOINCREMENT reuses
+    ROWIDs after a delete, so the surrogate ID can legitimately stay
+    at 1 even when the row was actually replaced.
+    """
     seed(db_session)
     db_session.commit()
-    first_storm_id = db_session.query(Storm).filter_by(nhc_id=NHC_ID).one().id
-
-    seed(db_session, clear=True)
+    storm = db_session.query(Storm).filter_by(nhc_id=NHC_ID).one()
+    storm.name = "MUTATED"
     db_session.commit()
-    second_storm_id = db_session.query(Storm).filter_by(nhc_id=NHC_ID).one().id
 
-    # With a clean delete + insert, the surrogate PK should advance.
-    assert second_storm_id != first_storm_id
+    # Capture SQLAlchemy warnings during the clear+reseed. An "identity
+    # map already had an identity for ..." SAWarning here means
+    # ``_clear_existing`` forgot to ``expunge_all()`` after deleting,
+    # and the next PK-reusing insert tripped the identity-map guard.
+    # Silent today — we want it to stay silent.
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", SAWarning)
+        seed(db_session, clear=True)
+        db_session.commit()
+    identity_warnings = [w for w in caught if "identity map already had" in str(w.message)]
+    assert not identity_warnings, (
+        f"_clear_existing should expunge before re-insert; got: "
+        f"{[str(w.message) for w in identity_warnings]}"
+    )
+
+    storm = db_session.query(Storm).filter_by(nhc_id=NHC_ID).one()
+    # ``clear=True`` should have dropped the mutated row and re-inserted
+    # the canonical seeded data.
+    assert storm.name == "Irma"
+    # And only one row — no duplicate from the re-seed.
+    assert db_session.query(Storm).filter_by(nhc_id=NHC_ID).count() == 1

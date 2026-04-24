@@ -92,6 +92,11 @@ def test_index_wires_up_forecast_map(client: TestClient) -> None:
     assert 'id="forecast-map"' in body
     assert 'id="forecast-map-empty"' in body
     assert 'id="forecast-map-advisory"' in body
+    # Per-storm details readout under the map (name, category, winds,
+    # pressure, movement) — filled by the same loader that draws the
+    # cone, so it's wired up in the same template block.
+    assert 'id="forecast-storm-details"' in body
+    assert 'data-testid="forecast-storm-details"' in body
     # The Leaflet CDN + SRI bundle lives in base.html.
     assert "unpkg.com/leaflet@1.9.4" in body
     # The client-side loader that consumes /api/v1/forecasts/active.
