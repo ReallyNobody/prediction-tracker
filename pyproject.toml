@@ -33,6 +33,11 @@ dependencies = [
     "httpx>=0.27",
     "beautifulsoup4>=4.12",
     "lxml>=5.1",
+    # Pure-Python shapefile reader — pulled in for NHC forecastTrack and
+    # wsp_120hr ZIPs. Deliberately chose pyshp over fiona/geopandas to
+    # avoid pulling GDAL/GEOS C-lib wheels (Render build surface risk).
+    # We hand-roll shp→GeoJSON because points + polygons are all we need.
+    "pyshp>=2.3",
 
     # Scheduling
     "apscheduler>=3.10",

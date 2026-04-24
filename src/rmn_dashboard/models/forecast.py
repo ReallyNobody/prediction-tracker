@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, Text
+from sqlalchemy import JSON, DateTime, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from rmn_dashboard.models.base import Base
@@ -17,9 +17,16 @@ class Forecast(Base):
     NHC issues advisories at fixed intervals (every 3–6 hours while a storm
     is active). Each advisory becomes a row here — we preserve the full
     history so Panel 6 ("what changed today") can diff against yesterday's.
+
+    ``(storm_id, issued_at)`` is unique: one row per storm per advisory.
+    The Day 10 ingest does a pre-insert SELECT for idempotency, and the
+    DB-level constraint is the belt-and-suspenders layer under that.
     """
 
     __tablename__ = "forecasts"
+    __table_args__ = (
+        UniqueConstraint("storm_id", "issued_at", name="uq_forecasts_storm_issued"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
