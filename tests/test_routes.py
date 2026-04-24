@@ -26,14 +26,16 @@ def test_index_returns_html_with_panel_shells(client: TestClient) -> None:
     assert "<html" in body.lower()
     assert "Hurricane Dashboard" in body
 
-    # Six panels. The class appears once in the <style> block plus once
-    # per panel, so seven matches total.
-    assert body.count("panel-shell") == 7
+    # Seven panels (six original + the Day 12 landfall map). The class
+    # appears once in the <style> block plus once per panel, so eight
+    # matches total.
+    assert body.count("panel-shell") == 8
 
     # Each panel heading is present.
     for heading in (
         "Active storms",
         "Markets on it",
+        "Landfall probability",
         "Carrier exposure",
         "Cat bond spreads",
         "Historical analogs",
@@ -94,6 +96,31 @@ def test_index_wires_up_forecast_map(client: TestClient) -> None:
     assert "unpkg.com/leaflet@1.9.4" in body
     # The client-side loader that consumes /api/v1/forecasts/active.
     assert "/static/js/forecast_map.js" in body
+
+
+def test_index_wires_up_landfall_map(client: TestClient) -> None:
+    """Panel 4 (landfall probability) ships its own Leaflet container,
+    threshold selector, and loader script.
+
+    Separate smoke test from Panel 1's so a regression in one panel's
+    markup fails on a distinct test rather than disappearing into a
+    shared assertion block. ``panel_landfall.js`` targets each of these
+    IDs by string — losing any of them silently breaks the map.
+    """
+    body = client.get("/").text
+    # Container + empty-state + threshold selector the JS targets by id.
+    assert 'id="landfall-map"' in body
+    assert 'id="landfall-map-empty"' in body
+    assert 'id="landfall-threshold"' in body
+    # All three WSP threshold options are rendered — the dropdown is how
+    # the user switches between 34 / 50 / 64 kt bands, so a regression
+    # that drops one should fail loud rather than merely losing a choice.
+    assert 'value="34"' in body
+    assert 'value="50"' in body
+    assert 'value="64"' in body
+    # The client-side loader that consumes
+    # /api/v1/forecasts/active?include_wsp=true and renders the choropleth.
+    assert "/static/js/panel_landfall.js" in body
 
 
 def test_healthz(client: TestClient) -> None:

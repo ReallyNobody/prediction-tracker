@@ -45,8 +45,11 @@
       .panel-shell { min-height: 14rem; }
       /* Leaflet needs an explicit height on its container; Tailwind's
          h-96 (24rem = 384px) matches the cone-map aspect ratio we want
-         on the 2-col panel. */
+         on the 2-col panel. The landfall (WSP) map is a full-width row
+         and gets slightly more vertical room so basin-wide probability
+         contours stay readable. */
       #forecast-map { height: 24rem; }
+      #landfall-map { height: 28rem; }
     </style>
   </head>
   <body class="bg-slate-50 text-slate-900 antialiased">
