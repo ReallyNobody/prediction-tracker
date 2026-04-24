@@ -36,6 +36,18 @@
       <div id="forecast-map-empty" class="mt-3 text-slate-400">
         <p class="text-sm">Loading active storms…</p>
       </div>
+      {#
+        Compact per-storm readout beneath the map. Filled by
+        forecast_map.js from the same /api/v1/forecasts/active payload
+        the map uses — surfaces the facts the cone itself doesn't show
+        (classification, max winds, pressure, movement) without making
+        the user hover map markers to find them. Empty during the
+        off-season / failure states; the JS leaves it blank so it
+        vanishes visually.
+      #}
+      <div id="forecast-storm-details"
+           class="mt-3 divide-y divide-slate-100 text-sm text-slate-700"
+           data-testid="forecast-storm-details"></div>
     </section>
 
     {#  Panel 4 — Prediction market sidebar (small, honest)  #}
