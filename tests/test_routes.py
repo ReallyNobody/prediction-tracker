@@ -76,6 +76,26 @@ def test_index_renders_market_rows_when_seeded(client: TestClient, db_session: S
     assert "No hurricane markets in the database yet" not in body
 
 
+def test_index_wires_up_forecast_map(client: TestClient) -> None:
+    """Panel 1 ships the Leaflet map container and the loader script.
+
+    This is a smoke test — it doesn't exercise the JS, just asserts the
+    HTML contract the script depends on. If any of these IDs, script
+    paths, or the Leaflet CDN link disappear, the map silently won't
+    render, so failing fast at the template level is worth the handful
+    of string assertions.
+    """
+    body = client.get("/").text
+    # Container + empty-state + advisory readout the JS targets by id.
+    assert 'id="forecast-map"' in body
+    assert 'id="forecast-map-empty"' in body
+    assert 'id="forecast-map-advisory"' in body
+    # The Leaflet CDN + SRI bundle lives in base.html.
+    assert "unpkg.com/leaflet@1.9.4" in body
+    # The client-side loader that consumes /api/v1/forecasts/active.
+    assert "/static/js/forecast_map.js" in body
+
+
 def test_healthz(client: TestClient) -> None:
     response = client.get("/healthz")
     assert response.status_code == 200

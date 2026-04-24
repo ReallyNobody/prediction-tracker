@@ -1,0 +1,218 @@
+/* Panel 1 — Active storms cone map.
+ *
+ * Fetches /api/v1/forecasts/active, renders the cone polygon and 5-day
+ * track points for each active storm on a Leaflet map, and falls back to
+ * an empty-state message during the off-season (and, separately, when
+ * the fetch itself fails — those two states look different to the user).
+ *
+ * Why client-rendered: the server ships an empty #forecast-map <div> in
+ * the template and this script takes over on DOMContentLoaded. That
+ * keeps the Jinja template stable across season/off-season (no branchy
+ * server-side maps) and means a mid-session ingest tick that adds a
+ * storm to the DB shows up on the next poll without a page reload.
+ *
+ * Intentionally no framework — small surface, Leaflet is already on the
+ * page via base.html, and we want this panel to render in one repaint
+ * rather than waiting on a JS bundle.
+ */
+
+(function () {
+  "use strict";
+
+  // Atlantic basin centroid + a zoom that shows Gulf of Mexico + Leeward
+  // Islands in one frame. Actual bounds get refitted once we have a cone
+  // to size against; this is just the initial paint so the empty ocean
+  // doesn't flash.
+  const DEFAULT_CENTER = [25.0, -70.0];
+  const DEFAULT_ZOOM = 4;
+
+  // NHC cone is conventionally drawn in a warning orange. Semi-transparent
+  // so the coastline underneath stays readable — the whole point of the
+  // panel is to see which land the cone touches.
+  const CONE_STYLE = {
+    color: "#ea580c", // tailwind orange-600 — matches the dashboard accent palette
+    weight: 1,
+    opacity: 0.8,
+    fillColor: "#fb923c", // tailwind orange-400
+    fillOpacity: 0.25,
+  };
+
+  // Small circle markers for the 5-day forecast points. Sized so 5 of
+  // them along a track don't overlap at the default zoom.
+  const FORECAST_POINT_STYLE = {
+    radius: 5,
+    color: "#9a3412", // orange-800
+    weight: 1,
+    fillColor: "#fdba74", // orange-300
+    fillOpacity: 0.9,
+  };
+
+  // Current-position marker is deliberately larger + a different colour
+  // so users can pick out "where the storm is right now" vs "where NHC
+  // thinks it's going" at a glance.
+  const CURRENT_POSITION_STYLE = {
+    radius: 8,
+    color: "#7f1d1d", // red-900
+    weight: 2,
+    fillColor: "#dc2626", // red-600
+    fillOpacity: 0.95,
+  };
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const mapEl = document.getElementById("forecast-map");
+    const emptyEl = document.getElementById("forecast-map-empty");
+    const advisoryEl = document.getElementById("forecast-map-advisory");
+
+    // The map div only exists on the dashboard index. Script is loaded
+    // from base.html on every page in principle, but we scope early.
+    if (!mapEl || !emptyEl) {
+      return;
+    }
+
+    fetch("/api/v1/forecasts/active", { headers: { Accept: "application/json" } })
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status);
+        }
+        return response.json();
+      })
+      .then(function (payload) {
+        const storms = (payload && payload.storms) || [];
+        if (storms.length === 0) {
+          showEmptyState(emptyEl, mapEl);
+          return;
+        }
+        renderMap(mapEl, emptyEl, advisoryEl, storms);
+      })
+      .catch(function (err) {
+        // On fetch failure show a distinct message — a silent empty
+        // state would hide a broken endpoint during incidents.
+        console.error("forecast-map fetch failed", err);
+        emptyEl.innerHTML =
+          '<p class="text-sm text-rose-500">Forecast feed unavailable — try refreshing.</p>';
+        mapEl.classList.add("hidden");
+      });
+  });
+
+  function showEmptyState(emptyEl, mapEl) {
+    // Same message year-round during the off-season. Atlantic hurricane
+    // season officially runs Jun 1 – Nov 30; NHC occasionally issues
+    // pre-season products for May systems but those still show up via
+    // /api/v1/forecasts/active when they exist.
+    emptyEl.innerHTML =
+      '<p class="text-sm">No active Atlantic storms — hurricane season runs June 1 – November 30.</p>';
+    mapEl.classList.add("hidden");
+  }
+
+  function renderMap(mapEl, emptyEl, advisoryEl, storms) {
+    // Reveal the map container first so Leaflet can measure it. Leaflet
+    // silently refuses to size a hidden div.
+    emptyEl.classList.add("hidden");
+    mapEl.classList.remove("hidden");
+
+    const map = L.map(mapEl, {
+      center: DEFAULT_CENTER,
+      zoom: DEFAULT_ZOOM,
+      scrollWheelZoom: false, // page-scroll-friendly; users click to interact
+    });
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 10,
+    }).addTo(map);
+
+    const allLayers = [];
+
+    storms.forEach(function (entry) {
+      const storm = entry.storm || {};
+      const forecast = entry.forecast || {};
+      const position = entry.current_position;
+
+      const label =
+        (storm.storm_type || "Storm") + " " + (storm.name || storm.nhc_id || "—");
+
+      // Cone polygon
+      if (forecast.cone_geojson) {
+        const coneLayer = L.geoJSON(forecast.cone_geojson, {
+          style: CONE_STYLE,
+        })
+          .bindPopup(label + " — 5-day cone")
+          .addTo(map);
+        allLayers.push(coneLayer);
+      }
+
+      // 5-day track points — small circles with hover popups
+      const points = forecast.forecast_5day_points || [];
+      points.forEach(function (pt) {
+        if (typeof pt.latitude_deg !== "number" || typeof pt.longitude_deg !== "number") {
+          return;
+        }
+        const marker = L.circleMarker(
+          [pt.latitude_deg, pt.longitude_deg],
+          FORECAST_POINT_STYLE,
+        )
+          .bindPopup(buildPointPopup(label, pt))
+          .addTo(map);
+        allLayers.push(marker);
+      });
+
+      // Current-position marker (larger, different colour)
+      if (
+        position &&
+        typeof position.latitude_deg === "number" &&
+        typeof position.longitude_deg === "number"
+      ) {
+        const marker = L.circleMarker(
+          [position.latitude_deg, position.longitude_deg],
+          CURRENT_POSITION_STYLE,
+        )
+          .bindPopup(buildCurrentPopup(label, position))
+          .addTo(map);
+        allLayers.push(marker);
+      }
+    });
+
+    // Fit bounds to whatever we drew, padded so markers on the edge
+    // aren't clipped by the panel border.
+    if (allLayers.length > 0) {
+      const group = L.featureGroup(allLayers);
+      try {
+        map.fitBounds(group.getBounds(), { padding: [20, 20] });
+      } catch (e) {
+        // getBounds throws on an empty group; defensive fallback keeps
+        // the default Atlantic view.
+        map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+      }
+    }
+
+    // Advisory timestamp — small header annotation showing how fresh
+    // the product is. Uses the latest storm in the list as the proxy
+    // because the UI currently only shows "the active basin", not one
+    // storm at a time.
+    if (advisoryEl && storms[0] && storms[0].forecast && storms[0].forecast.issued_at) {
+      advisoryEl.textContent = "Issued " + storms[0].forecast.issued_at;
+    }
+  }
+
+  function buildPointPopup(stormLabel, pt) {
+    // Basic popup. Intentionally plain — the panel's job is the spatial
+    // picture, not a scrollable data grid.
+    const parts = [stormLabel];
+    if (pt.valid_at) parts.push("Valid: " + pt.valid_at);
+    if (typeof pt.intensity_kt === "number") parts.push(pt.intensity_kt + " kt");
+    if (pt.classification) parts.push(pt.classification);
+    return parts.join("<br>");
+  }
+
+  function buildCurrentPopup(stormLabel, position) {
+    const parts = [stormLabel + " — current position"];
+    if (position.observation_time) parts.push("At: " + position.observation_time);
+    if (typeof position.intensity_kt === "number")
+      parts.push(position.intensity_kt + " kt");
+    if (typeof position.pressure_mb === "number")
+      parts.push(position.pressure_mb + " mb");
+    if (position.classification) parts.push(position.classification);
+    return parts.join("<br>");
+  }
+})();

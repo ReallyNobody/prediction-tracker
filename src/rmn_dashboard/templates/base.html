@@ -22,10 +22,31 @@
     <!-- Plotly (charts wired in Week 2) -->
     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 
+    <!--
+      Leaflet — Panel 1 cone map. 1.9.4 is the current stable; SRI hashes
+      are the ones published on the Leaflet download page. ~42KB gzipped
+      for the JS, tiles come from OpenStreetMap (no API key).
+    -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin="anonymous"
+    />
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin="anonymous"
+    ></script>
+
     <style>
       /* Minor readability tweaks on top of Tailwind's defaults */
       html { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
       .panel-shell { min-height: 14rem; }
+      /* Leaflet needs an explicit height on its container; Tailwind's
+         h-96 (24rem = 384px) matches the cone-map aspect ratio we want
+         on the 2-col panel. */
+      #forecast-map { height: 24rem; }
     </style>
   </head>
   <body class="bg-slate-50 text-slate-900 antialiased">
