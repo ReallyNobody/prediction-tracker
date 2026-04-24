@@ -12,12 +12,14 @@ from rmn_dashboard.models.daily_snapshot import DailySnapshot
 from rmn_dashboard.models.forecast import Forecast
 from rmn_dashboard.models.prediction_market import PredictionMarket
 from rmn_dashboard.models.storm import Storm
+from rmn_dashboard.models.storm_observation import StormObservation
 
 __all__ = [
     "Base",
     "TimestampMixin",
     "CatLoss",
     "Storm",
+    "StormObservation",
     "Forecast",
     "CarrierExposure",
     "CatBondQuote",
