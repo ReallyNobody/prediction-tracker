@@ -18,6 +18,7 @@ from rmn_dashboard import __version__
 from rmn_dashboard.config import settings
 from rmn_dashboard.database import get_session
 from rmn_dashboard.models import CatLoss
+from rmn_dashboard.routes.api import router as api_router
 from rmn_dashboard.scheduler import build_scheduler
 from rmn_dashboard.services.markets import latest_hurricane_markets
 
@@ -85,6 +86,9 @@ app = FastAPI(
 )
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+# JSON API — Panel 1's cone map fetches /api/v1/forecasts/active client-side.
+app.include_router(api_router)
 
 
 @app.get("/", response_class=HTMLResponse)
