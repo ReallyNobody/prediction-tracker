@@ -1,0 +1,62 @@
+{
+  "activeStorms": [
+    {
+      "id": "al112017",
+      "binNumber": "AT1",
+      "name": "Irma",
+      "classification": "HU",
+      "intensity": "160",
+      "pressure": "927",
+      "latitude": "22.9N",
+      "latitude_numeric": 22.9,
+      "longitude": "79.9W",
+      "longitude_numeric": -79.9,
+      "movementDir": 315,
+      "movementSpeed": 15,
+      "lastUpdate": "2017-09-09T15:00:00.000Z",
+      "publicAdvisory": {
+        "advNum": "38",
+        "issuance": "2017-09-09T15:00:00.000Z",
+        "url": "https://www.nhc.noaa.gov/text/refresh/MIATCPAT1+shtml/091500.shtml"
+      },
+      "forecastAdvisory": {
+        "advNum": "38",
+        "issuance": "2017-09-09T15:00:00.000Z",
+        "url": "https://www.nhc.noaa.gov/text/refresh/MIATCMAT1+shtml/091456.shtml"
+      },
+      "forecastTrack": {
+        "advNum": "38",
+        "issuance": "2017-09-09T15:00:00.000Z",
+        "zipFile": "https://www.nhc.noaa.gov/gis/forecast/archive/al112017_5day_038.zip",
+        "kmzFile": "https://www.nhc.noaa.gov/storm_graphics/api/AL112017_038_5day_latest.kmz"
+      },
+      "trackCone": {
+        "advNum": "38",
+        "issuance": "2017-09-09T15:00:00.000Z",
+        "zipFile": "https://www.nhc.noaa.gov/gis/forecast/archive/al112017_fcst_038.zip",
+        "kmzFile": "https://www.nhc.noaa.gov/storm_graphics/api/AL112017_038_CONE_latest.kmz"
+      }
+    },
+    {
+      "id": "al122017",
+      "binNumber": "AT2",
+      "name": "Jose",
+      "classification": "HU",
+      "intensity": "125",
+      "pressure": "948",
+      "latitude": "19.1N",
+      "latitude_numeric": 19.1,
+      "longitude": "59.4W",
+      "longitude_numeric": -59.4,
+      "movementDir": 290,
+      "movementSpeed": 16,
+      "lastUpdate": "2017-09-09T15:00:00.000Z",
+      "forecastTrack": {
+        "advNum": "15",
+        "issuance": "2017-09-09T15:00:00.000Z",
+        "zipFile": "https://www.nhc.noaa.gov/gis/forecast/archive/al122017_5day_015.zip",
+        "kmzFile": "https://www.nhc.noaa.gov/storm_graphics/api/AL122017_015_5day_latest.kmz"
+      }
+    }
+  ]
+}

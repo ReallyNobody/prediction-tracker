@@ -48,6 +48,15 @@ class Settings(BaseSettings):
         description="SEC requires a descriptive User-Agent with contact info.",
     )
 
+    # --- NHC ---
+    # Atlantic & East-Pacific tropical-cyclone status feed. Unauthenticated,
+    # no documented rate limit; poll every 15 minutes in prod. Also reuses
+    # ``sec_user_agent`` as a courtesy User-Agent — NHC doesn't require one.
+    nhc_current_storms_url: str = Field(
+        default="https://www.nhc.noaa.gov/CurrentStorms.json",
+        description="NHC active-storms JSON feed.",
+    )
+
     # --- Scheduler ---
     scheduler_enabled: bool = Field(default=False, description="Disabled in dev by default.")
     kalshi_ingest_interval_minutes: int = Field(
