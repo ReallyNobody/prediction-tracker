@@ -129,7 +129,10 @@ def test_run_nhc_ingest_idempotent_on_same_advisory(db_session: Session) -> None
 
     assert first == 2
     assert second == 0  # everything was a dupe
-    assert db_session.scalar(select(StormObservation).where(StormObservation.storm_id.is_not(None))) is not None
+    assert (
+        db_session.scalar(select(StormObservation).where(StormObservation.storm_id.is_not(None)))
+        is not None
+    )
     assert len(db_session.scalars(select(StormObservation)).all()) == 2
 
 
@@ -149,15 +152,12 @@ def test_run_nhc_ingest_new_advisory_adds_observation_updates_storm(
     irma["intensity"] = 180
     irma["pressure"] = 914
     irma["lastUpdate"] = (
-        datetime.fromisoformat(irma["lastUpdate"].replace("Z", "+00:00"))
-        + timedelta(hours=3)
+        datetime.fromisoformat(irma["lastUpdate"].replace("Z", "+00:00")) + timedelta(hours=3)
     ).isoformat()
 
     run_nhc_ingest(db_session, http_client=_client_for(newer))
 
-    irma_storm = db_session.scalars(
-        select(Storm).where(Storm.nhc_id == "al112017")
-    ).one()
+    irma_storm = db_session.scalars(select(Storm).where(Storm.nhc_id == "al112017")).one()
     assert irma_storm.max_wind_kt == 180  # lifetime peak raised
     assert irma_storm.min_pressure_mb == 914  # lifetime deepest
 
@@ -273,10 +273,7 @@ def test_run_nhc_ingest_logs_counts_at_info(
         run_nhc_ingest(db_session, http_client=_client_for(fixture))
 
     # One INFO line summarizing observed / persisted / skipped.
-    assert any(
-        "storms observed" in r.message and "persisted" in r.message
-        for r in caplog.records
-    )
+    assert any("storms observed" in r.message and "persisted" in r.message for r in caplog.records)
 
 
 def test_run_nhc_ingest_uses_provided_observation_time(db_session: Session) -> None:

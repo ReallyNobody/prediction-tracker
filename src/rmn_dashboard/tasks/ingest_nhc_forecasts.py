@@ -50,8 +50,8 @@ from sqlalchemy.orm import Session
 
 from rmn_dashboard.models import Forecast, Storm, StormObservation
 from rmn_dashboard.scrapers.nhc_shapefiles import (
-    NHCShapefileError,
     ForecastTrack,
+    NHCShapefileError,
     fetch_forecast_track,
     fetch_wind_probability,
 )
@@ -205,9 +205,7 @@ def run_nhc_forecast_ingest(
         if wsp_url is not None:
             if wsp_url not in wsp_cache:
                 try:
-                    wsp_cache[wsp_url] = fetch_wind_probability(
-                        wsp_url, http_client=http_client
-                    )
+                    wsp_cache[wsp_url] = fetch_wind_probability(wsp_url, http_client=http_client)
                 except (httpx.HTTPError, NHCShapefileError):
                     logger.exception(
                         "NHC forecast ingest: failed to fetch/parse wsp for %s (%s)",

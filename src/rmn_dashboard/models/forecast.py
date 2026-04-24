@@ -24,9 +24,7 @@ class Forecast(Base):
     """
 
     __tablename__ = "forecasts"
-    __table_args__ = (
-        UniqueConstraint("storm_id", "issued_at", name="uq_forecasts_storm_issued"),
-    )
+    __table_args__ = (UniqueConstraint("storm_id", "issued_at", name="uq_forecasts_storm_issued"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
 

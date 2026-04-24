@@ -132,9 +132,7 @@ def _find_shapefile_stem(archive: zipfile.ZipFile, suffix: str) -> str | None:
     return None
 
 
-def _find_all_shapefile_stems(
-    archive: zipfile.ZipFile, contains: str
-) -> list[str]:
+def _find_all_shapefile_stems(archive: zipfile.ZipFile, contains: str) -> list[str]:
     """Return every shapefile stem whose name contains ``contains`` (case-
     insensitive). Used for wsp_120hr, which ships multiple threshold layers
     (wsp34knt/wsp50knt/wsp64knt) in one ZIP.
@@ -150,9 +148,7 @@ def _find_all_shapefile_stems(
 # ----- DBF record → GeoJSON properties ------------------------------------
 
 
-def _record_to_properties(
-    record: shapefile.Record, field_names: list[str]
-) -> dict[str, Any]:
+def _record_to_properties(record: shapefile.Record, field_names: list[str]) -> dict[str, Any]:
     """Pull a pyshp Record into a plain dict, stripping numeric sentinels.
 
     pyshp exposes records as both dict-like and list-like; we use the
@@ -233,9 +229,7 @@ def _shape_to_geojson_geometry(shape: shapefile.Shape) -> dict[str, Any]:
     raise NHCShapefileError(f"Unsupported shapefile shape type: {sh_type}")
 
 
-def _split_parts(
-    points: list[tuple[float, float]], parts: list[int]
-) -> list[list[list[float]]]:
+def _split_parts(points: list[tuple[float, float]], parts: list[int]) -> list[list[list[float]]]:
     """Break a flat list of points into rings/linestrings at each ``parts``
     index. pyshp stores multi-part geometries as a single flat ``points``
     array plus a list of start indices; GeoJSON wants nested arrays."""
@@ -317,8 +311,7 @@ def parse_forecast_track_zip(zip_bytes: bytes) -> ForecastTrack:
     advdate_raw = first_props.get("ADVDATE") or first_props.get("advdate") or ""
     if not advisory_number or not advdate_raw:
         raise NHCShapefileError(
-            "forecastTrack point record missing ADVISNUM or ADVDATE: "
-            f"{first_props!r}"
+            f"forecastTrack point record missing ADVISNUM or ADVDATE: {first_props!r}"
         )
 
     issued_at = _parse_advdate(advdate_raw)
@@ -332,9 +325,7 @@ def parse_forecast_track_zip(zip_bytes: bytes) -> ForecastTrack:
     )
 
 
-def _parse_point_layer(
-    archive: zipfile.ZipFile, stem: str
-) -> list[dict[str, Any]]:
+def _parse_point_layer(archive: zipfile.ZipFile, stem: str) -> list[dict[str, Any]]:
     """Read every point feature in ``stem`` into GeoJSON Feature dicts."""
     reader = _open_shapefile_from_zip(archive, stem)
     fnames = _dbf_field_names(reader)
@@ -354,9 +345,7 @@ def _parse_point_layer(
     return features
 
 
-def _parse_cone_layer(
-    archive: zipfile.ZipFile, stem: str
-) -> dict[str, Any]:
+def _parse_cone_layer(archive: zipfile.ZipFile, stem: str) -> dict[str, Any]:
     """Read the first polygon feature in ``stem`` and return its geometry.
 
     NHC's cone shapefile always contains a single feature per advisory;
@@ -405,9 +394,7 @@ def parse_wind_probability_zip(zip_bytes: bytes) -> dict[str, Any]:
     features: list[dict[str, Any]] = []
     stems = _find_all_shapefile_stems(archive, "wsp")
     if not stems:
-        raise NHCShapefileError(
-            f"wsp_120hr ZIP has no wsp*.shp layers: {archive.namelist()!r}"
-        )
+        raise NHCShapefileError(f"wsp_120hr ZIP has no wsp*.shp layers: {archive.namelist()!r}")
 
     for stem in stems:
         lower = stem.lower()
@@ -433,9 +420,7 @@ def parse_wind_probability_zip(zip_bytes: bytes) -> dict[str, Any]:
                 continue
             props = _record_to_properties(shape_rec.record, fnames)
             props["threshold_kt"] = threshold
-            features.append(
-                {"type": "Feature", "geometry": geom, "properties": props}
-            )
+            features.append({"type": "Feature", "geometry": geom, "properties": props})
 
     return {"type": "FeatureCollection", "features": features}
 
@@ -467,15 +452,11 @@ def fetch_zip_bytes(url: str, http_client: httpx.Client | None = None) -> bytes:
             client.close()
 
 
-def fetch_forecast_track(
-    url: str, http_client: httpx.Client | None = None
-) -> ForecastTrack:
+def fetch_forecast_track(url: str, http_client: httpx.Client | None = None) -> ForecastTrack:
     """Fetch + parse a forecastTrack ZIP in one step."""
     return parse_forecast_track_zip(fetch_zip_bytes(url, http_client=http_client))
 
 
-def fetch_wind_probability(
-    url: str, http_client: httpx.Client | None = None
-) -> dict[str, Any]:
+def fetch_wind_probability(url: str, http_client: httpx.Client | None = None) -> dict[str, Any]:
     """Fetch + parse a wsp_120hr ZIP in one step."""
     return parse_wind_probability_zip(fetch_zip_bytes(url, http_client=http_client))

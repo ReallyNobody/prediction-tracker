@@ -76,8 +76,7 @@ def _season_year_from_nhc_id(nhc_id: str) -> int:
     """
     if len(nhc_id) != 8 or not nhc_id[-4:].isdigit():
         raise ValueError(
-            f"NHC id doesn't match expected shape "
-            f"(8 chars ending in 4-digit year): {nhc_id!r}"
+            f"NHC id doesn't match expected shape (8 chars ending in 4-digit year): {nhc_id!r}"
         )
     return int(nhc_id[-4:])
 
@@ -196,9 +195,7 @@ def run_nhc_ingest(
         try:
             storm = _upsert_storm(db, obs)
         except ValueError:
-            logger.exception(
-                "NHC ingest: skipping storm with malformed id: %s", obs.nhc_id
-            )
+            logger.exception("NHC ingest: skipping storm with malformed id: %s", obs.nhc_id)
             continue
 
         if _observation_exists(db, storm.id, obs.last_update):

@@ -183,15 +183,11 @@ def test_parse_advdate_yymmdd_hhmm_form() -> None:
 
 
 def test_parse_advdate_verbose_form() -> None:
-    assert _parse_advdate("1500 UTC SAT SEP 09 2017") == datetime(
-        2017, 9, 9, 15, 0, tzinfo=UTC
-    )
+    assert _parse_advdate("1500 UTC SAT SEP 09 2017") == datetime(2017, 9, 9, 15, 0, tzinfo=UTC)
 
 
 def test_parse_advdate_iso_form() -> None:
-    assert _parse_advdate("2017-09-09T15:00:00Z") == datetime(
-        2017, 9, 9, 15, 0, tzinfo=UTC
-    )
+    assert _parse_advdate("2017-09-09T15:00:00Z") == datetime(2017, 9, 9, 15, 0, tzinfo=UTC)
 
 
 def test_parse_advdate_rejects_garbage() -> None:

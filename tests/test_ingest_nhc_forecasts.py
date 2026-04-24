@@ -27,7 +27,6 @@ from tests.test_nhc_shapefiles import (  # noqa: E402 — test helper import
     _build_wind_probability_zip,
 )
 
-
 # ----- Mock HTTP transport keyed by URL -----------------------------------
 
 
@@ -103,12 +102,8 @@ def _make_observation(
     return obs
 
 
-_IRMA_TRACK_URL = (
-    "https://www.nhc.noaa.gov/gis/forecast/archive/al112017_5day_038.zip"
-)
-_ATL_WSP_URL = (
-    "https://www.nhc.noaa.gov/gis/forecast/archive/2017_wsp_120hrhalfDeg_118.zip"
-)
+_IRMA_TRACK_URL = "https://www.nhc.noaa.gov/gis/forecast/archive/al112017_5day_038.zip"
+_ATL_WSP_URL = "https://www.nhc.noaa.gov/gis/forecast/archive/2017_wsp_120hrhalfDeg_118.zip"
 
 
 def _default_advisory_urls(
@@ -147,9 +142,7 @@ def test_run_nhc_forecast_ingest_inserts_new_forecast(db_session: Session) -> No
 
     count = run_nhc_forecast_ingest(
         db_session,
-        http_client=_client_for_url_map(
-            {_IRMA_TRACK_URL: track_zip, _ATL_WSP_URL: wsp_zip}
-        ),
+        http_client=_client_for_url_map({_IRMA_TRACK_URL: track_zip, _ATL_WSP_URL: wsp_zip}),
     )
     assert count == 1
 
@@ -179,15 +172,11 @@ def test_run_nhc_forecast_ingest_idempotent_on_same_advisory(db_session: Session
 
     first = run_nhc_forecast_ingest(
         db_session,
-        http_client=_client_for_url_map(
-            {_IRMA_TRACK_URL: track_zip, _ATL_WSP_URL: wsp_zip}
-        ),
+        http_client=_client_for_url_map({_IRMA_TRACK_URL: track_zip, _ATL_WSP_URL: wsp_zip}),
     )
     second = run_nhc_forecast_ingest(
         db_session,
-        http_client=_client_for_url_map(
-            {_IRMA_TRACK_URL: track_zip, _ATL_WSP_URL: wsp_zip}
-        ),
+        http_client=_client_for_url_map({_IRMA_TRACK_URL: track_zip, _ATL_WSP_URL: wsp_zip}),
     )
 
     assert first == 1
@@ -206,19 +195,13 @@ def test_run_nhc_forecast_ingest_dedupes_wsp_fetches_across_storms(
     storm, quadrupling egress and upstream load.
     """
     irma = _make_storm(db_session, nhc_id="al112017", name="Irma")
-    _make_observation(
-        db_session, irma, advisory_urls=_default_advisory_urls()
-    )
+    _make_observation(db_session, irma, advisory_urls=_default_advisory_urls())
     jose = _make_storm(db_session, nhc_id="al122017", name="Jose")
-    jose_track_url = (
-        "https://www.nhc.noaa.gov/gis/forecast/archive/al122017_5day_012.zip"
-    )
+    jose_track_url = "https://www.nhc.noaa.gov/gis/forecast/archive/al122017_5day_012.zip"
     _make_observation(
         db_session,
         jose,
-        advisory_urls=_default_advisory_urls(
-            track_url=jose_track_url, wsp_url=_ATL_WSP_URL
-        ),
+        advisory_urls=_default_advisory_urls(track_url=jose_track_url, wsp_url=_ATL_WSP_URL),
         observation_time=datetime(2017, 9, 9, 15, 0, tzinfo=UTC) + timedelta(seconds=1),
     )
 
@@ -266,9 +249,7 @@ def test_run_nhc_forecast_ingest_skips_storm_without_observations(
     import logging as _logging
 
     with caplog.at_level(_logging.WARNING, logger="rmn_dashboard.tasks.ingest_nhc_forecasts"):
-        count = run_nhc_forecast_ingest(
-            db_session, http_client=_client_for_url_map({})
-        )
+        count = run_nhc_forecast_ingest(db_session, http_client=_client_for_url_map({}))
 
     assert count == 0
     assert db_session.scalar(select(Forecast)) is None
@@ -292,9 +273,7 @@ def test_run_nhc_forecast_ingest_skips_storm_without_forecast_track_url(
     import logging as _logging
 
     with caplog.at_level(_logging.WARNING, logger="rmn_dashboard.tasks.ingest_nhc_forecasts"):
-        count = run_nhc_forecast_ingest(
-            db_session, http_client=_client_for_url_map({})
-        )
+        count = run_nhc_forecast_ingest(db_session, http_client=_client_for_url_map({}))
 
     assert count == 0
     assert any("no forecastTrack.zipFile" in r.message for r in caplog.records)
@@ -309,15 +288,11 @@ def test_run_nhc_forecast_ingest_skips_storm_on_http_error(
     irma = _make_storm(db_session, nhc_id="al112017", name="Irma")
     _make_observation(db_session, irma, advisory_urls=_default_advisory_urls())
     jose = _make_storm(db_session, nhc_id="al122017", name="Jose")
-    jose_track_url = (
-        "https://www.nhc.noaa.gov/gis/forecast/archive/al122017_5day_012.zip"
-    )
+    jose_track_url = "https://www.nhc.noaa.gov/gis/forecast/archive/al122017_5day_012.zip"
     _make_observation(
         db_session,
         jose,
-        advisory_urls=_default_advisory_urls(
-            track_url=jose_track_url, wsp_url=_ATL_WSP_URL
-        ),
+        advisory_urls=_default_advisory_urls(track_url=jose_track_url, wsp_url=_ATL_WSP_URL),
         observation_time=datetime(2017, 9, 9, 15, 0, tzinfo=UTC) + timedelta(seconds=1),
     )
 
@@ -328,9 +303,7 @@ def test_run_nhc_forecast_ingest_skips_storm_on_http_error(
         if url == jose_track_url:
             return httpx.Response(
                 200,
-                content=_build_forecast_track_zip(
-                    storm_id="al122017", advisory_number="012"
-                ),
+                content=_build_forecast_track_zip(storm_id="al122017", advisory_number="012"),
             )
         if url == _ATL_WSP_URL:
             return httpx.Response(200, content=_build_wind_probability_zip())
@@ -395,9 +368,7 @@ def test_run_nhc_forecast_ingest_handles_missing_wsp_url(db_session: Session) ->
 
     count = run_nhc_forecast_ingest(
         db_session,
-        http_client=_client_for_url_map(
-            {_IRMA_TRACK_URL: _build_forecast_track_zip()}
-        ),
+        http_client=_client_for_url_map({_IRMA_TRACK_URL: _build_forecast_track_zip()}),
     )
     assert count == 1
     forecast = db_session.scalars(select(Forecast)).one()
@@ -411,9 +382,7 @@ def test_run_nhc_forecast_ingest_only_processes_active_storms(
     re-fetch forecasts for storms NHC has stopped publishing on."""
     _make_storm(db_session, nhc_id="al112017", name="Irma", status="dissipated")
 
-    count = run_nhc_forecast_ingest(
-        db_session, http_client=_client_for_url_map({})
-    )
+    count = run_nhc_forecast_ingest(db_session, http_client=_client_for_url_map({}))
     assert count == 0
     assert db_session.scalar(select(Forecast)) is None
 
@@ -438,7 +407,4 @@ def test_run_nhc_forecast_ingest_logs_counts_at_info(
             ),
         )
 
-    assert any(
-        "storms processed" in r.message and "inserted" in r.message
-        for r in caplog.records
-    )
+    assert any("storms processed" in r.message and "inserted" in r.message for r in caplog.records)
