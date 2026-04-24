@@ -281,9 +281,16 @@ def test_run_nhc_ingest_logs_counts_at_info(
 
 def test_run_nhc_ingest_uses_provided_observation_time(db_session: Session) -> None:
     """observation_time must be NHC's lastUpdate, not our wall clock — so
-    duplicate polls of the same advisory dedupe correctly."""
+    duplicate polls of the same advisory dedupe correctly.
+
+    SQLite strips tzinfo on round-trip (Postgres preserves it); coerce
+    naive→UTC-aware so the assertion works against both backends.
+    """
     fixture = _load_fixture()
     run_nhc_ingest(db_session, http_client=_client_for(fixture))
 
     obs = db_session.scalars(select(StormObservation).limit(1)).one()
-    assert obs.observation_time == datetime(2017, 9, 9, 15, 0, tzinfo=UTC)
+    stored = obs.observation_time
+    if stored.tzinfo is None:
+        stored = stored.replace(tzinfo=UTC)
+    assert stored == datetime(2017, 9, 9, 15, 0, tzinfo=UTC)
