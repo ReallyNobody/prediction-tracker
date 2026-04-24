@@ -56,12 +56,15 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         scheduler = build_scheduler(
             settings.kalshi_ingest_interval_minutes,
             settings.nhc_ingest_interval_minutes,
+            settings.nhc_forecast_ingest_interval_minutes,
         )
         scheduler.start()
         logger.info(
-            "Scheduler started; Kalshi ingest every %d minutes, NHC ingest every %d minutes",
+            "Scheduler started; Kalshi ingest every %d min, NHC ingest every %d min, "
+            "NHC forecast ingest every %d min",
             settings.kalshi_ingest_interval_minutes,
             settings.nhc_ingest_interval_minutes,
+            settings.nhc_forecast_ingest_interval_minutes,
         )
     try:
         yield

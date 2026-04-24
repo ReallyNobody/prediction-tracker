@@ -69,6 +69,17 @@ class Settings(BaseSettings):
         ge=1,
         description="How often the scheduled NHC active-storms ingest fires (minutes).",
     )
+    nhc_forecast_ingest_interval_minutes: int = Field(
+        default=30,
+        ge=1,
+        description=(
+            "How often the scheduled NHC forecast-product ingest fires (minutes). "
+            "Defaults longer than the observation cadence because NHC only "
+            "republishes forecast shapefiles on advisory boundaries (every "
+            "3–6 hours) — more frequent polling burns bandwidth for no "
+            "new data."
+        ),
+    )
 
     # --- Deployment ---
     host: str = Field(default="127.0.0.1")

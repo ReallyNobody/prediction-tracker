@@ -39,11 +39,13 @@ from apscheduler.triggers.interval import IntervalTrigger
 from rmn_dashboard.database import SessionLocal
 from rmn_dashboard.tasks.ingest_kalshi import run_kalshi_ingest
 from rmn_dashboard.tasks.ingest_nhc import run_nhc_ingest
+from rmn_dashboard.tasks.ingest_nhc_forecasts import run_nhc_forecast_ingest
 
 logger = logging.getLogger(__name__)
 
 KALSHI_JOB_ID = "kalshi_ingest"
 NHC_JOB_ID = "nhc_ingest"
+NHC_FORECAST_JOB_ID = "nhc_forecast_ingest"
 
 
 def _run_kalshi_ingest_job() -> None:
@@ -83,17 +85,37 @@ def _run_nhc_ingest_job() -> None:
         db.close()
 
 
+def _run_nhc_forecast_ingest_job() -> None:
+    """APScheduler job wrapper for the NHC forecast-product ingest.
+
+    Same contract as the other job wrappers: never raises out to
+    APScheduler, always closes its session. Off-season ``count == 0``
+    (no active storms) is the normal steady state and is logged at INFO
+    by the task itself.
+    """
+    db = SessionLocal()
+    try:
+        count = run_nhc_forecast_ingest(db)
+        logger.info("Scheduled NHC forecast ingest persisted %d rows", count)
+    except Exception:  # noqa: BLE001 — intentional blanket catch; see module docstring
+        logger.exception("Scheduled NHC forecast ingest failed; will retry next tick")
+    finally:
+        db.close()
+
+
 def build_scheduler(
     kalshi_interval_minutes: int,
     nhc_interval_minutes: int,
+    nhc_forecast_interval_minutes: int,
     *,
     kalshi_job: Callable[[], None] = _run_kalshi_ingest_job,
     nhc_job: Callable[[], None] = _run_nhc_ingest_job,
+    nhc_forecast_job: Callable[[], None] = _run_nhc_forecast_ingest_job,
     run_on_start: bool = True,
 ) -> BackgroundScheduler:
-    """Construct (but do not start) a ``BackgroundScheduler`` with both ingest jobs.
+    """Construct (but do not start) a ``BackgroundScheduler`` with all ingest jobs.
 
-    ``run_on_start=True`` pins first fire to "now" for both jobs so fresh
+    ``run_on_start=True`` pins first fire to "now" for every job so fresh
     deploys populate every panel without waiting a full interval. Tests
     pass ``run_on_start=False`` so jobs don't try to fire while the test
     process is assembling fixtures.
@@ -101,10 +123,11 @@ def build_scheduler(
     Each ``*_job`` kwarg is injectable so callers (and tests) can swap in
     a different callable without patching module globals.
 
-    Intervals are separate parameters (even though prod defaults both to
-    15 min) so ops can tune each source's cadence independently — NHC
-    has no rate limit but Kalshi does, which makes the Kalshi cadence
-    more load-bearing.
+    Intervals are separate parameters (even though prod defaults Kalshi
+    and NHC-observations both to 15 min) so ops can tune each source's
+    cadence independently — NHC has no rate limit but Kalshi does, and
+    NHC forecast shapefiles only republish on advisory boundaries so a
+    longer cadence there conserves bandwidth.
     """
     scheduler = BackgroundScheduler(timezone="UTC")
 
@@ -129,6 +152,15 @@ def build_scheduler(
         trigger=IntervalTrigger(minutes=nhc_interval_minutes),
         id=NHC_JOB_ID,
         name="NHC active-storms ingest",
+        next_run_time=now,
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        nhc_forecast_job,
+        trigger=IntervalTrigger(minutes=nhc_forecast_interval_minutes),
+        id=NHC_FORECAST_JOB_ID,
+        name="NHC forecast-product ingest",
         next_run_time=now,
         max_instances=1,
         coalesce=True,
