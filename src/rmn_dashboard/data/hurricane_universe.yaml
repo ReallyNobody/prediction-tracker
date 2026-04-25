@@ -336,3 +336,22 @@ tickers:
     key_states: [PA, KY, VA, RI]
     hurricane_relevance: low
     notes: PA + KY + RI; peripheral hurricane exposure.
+
+  # --- Cat bond ETFs --------------------------------------------------
+  #
+  # Panel 3 ("Cat bond market") reads from this section. Tickers here
+  # are publicly-traded ETFs holding catastrophe bonds — a public-data
+  # proxy for the institutional Plenum / Swiss Re indices that are
+  # gated behind Bloomberg / Artemis subscriptions.
+  #
+  # Editorial rule: empty key_states (cat bond books are global, same
+  # convention as reinsurers). Panel 2 filters cat_bond_etf out of the
+  # equity grid; Panel 3 selects only this sector.
+
+  - ticker: ILS
+    name: Insurance-Linked Securities ETF
+    sector: cat_bond_etf
+    cik: null
+    key_states: []
+    hurricane_relevance: high
+    notes: NYSE Arca-listed cat bond ETF; price moves with cat bond market repricing.

@@ -99,7 +99,13 @@ _VALID_US_STATES: frozenset[str] = frozenset(
     }
 )
 
-Sector = Literal["insurer", "reinsurer", "homebuilder", "utility"]
+# Day 15 added "cat_bond_etf" so a publicly-traded catastrophe-bond ETF
+# can ride the same ingest plumbing as the equity universe. It belongs
+# here (not in a separate YAML) because the data shape and scrape path
+# are identical — the only difference is which panel reads it. Panel 2
+# filters cat_bond_etf out of its equity grid; Panel 3 selects only
+# cat_bond_etf entries.
+Sector = Literal["insurer", "reinsurer", "homebuilder", "utility", "cat_bond_etf"]
 Relevance = Literal["high", "medium", "low"]
 
 
