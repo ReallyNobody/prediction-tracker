@@ -120,9 +120,7 @@ def test_returns_only_latest_quote_per_ticker(db_session: Session, small_univers
 
 
 def test_sector_filter_narrows(db_session: Session, small_universe) -> None:
-    result = latest_universe_quotes(
-        db_session, sectors=["utility"], universe=small_universe
-    )
+    result = latest_universe_quotes(db_session, sectors=["utility"], universe=small_universe)
     tickers = {r["ticker"] for r in result}
     assert tickers == {"NEE", "ETR"}
 

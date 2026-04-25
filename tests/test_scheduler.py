@@ -34,7 +34,6 @@ from rmn_dashboard.scheduler import (
     build_scheduler,
 )
 
-
 # Default kwargs shared across most build_scheduler tests, so adding a
 # new interval parameter doesn't require touching every call site.
 _DEFAULT_INTERVALS = {
@@ -424,9 +423,7 @@ def test_lifespan_starts_and_stops_scheduler_when_enabled(
     monkeypatch.setattr(
         main_module.settings, "nhc_forecast_ingest_interval_minutes", 30, raising=False
     )
-    monkeypatch.setattr(
-        main_module.settings, "yfinance_ingest_interval_minutes", 15, raising=False
-    )
+    monkeypatch.setattr(main_module.settings, "yfinance_ingest_interval_minutes", 15, raising=False)
 
     fake_scheduler = MagicMock()
     with patch("rmn_dashboard.main.build_scheduler", return_value=fake_scheduler) as builder:

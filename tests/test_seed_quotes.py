@@ -76,18 +76,14 @@ def test_seed_clear_flag_replaces_seeded_rows(db_session: Session) -> None:
         warnings.simplefilter("always", SAWarning)
         seed(db_session, clear=True)
         db_session.commit()
-    identity_warnings = [
-        w for w in caught if "identity map already had" in str(w.message)
-    ]
+    identity_warnings = [w for w in caught if "identity map already had" in str(w.message)]
     assert not identity_warnings, (
         f"_clear_existing should expunge before re-insert; got: "
         f"{[str(w.message) for w in identity_warnings]}"
     )
 
     # The mutated -999.0 sentinel is gone.
-    assert (
-        db_session.query(TickerQuote).filter_by(last_price=-999.0).first() is None
-    )
+    assert db_session.query(TickerQuote).filter_by(last_price=-999.0).first() is None
 
 
 def test_seed_does_not_touch_real_scrape_rows(db_session: Session) -> None:
@@ -99,9 +95,7 @@ def test_seed_does_not_touch_real_scrape_rows(db_session: Session) -> None:
     from datetime import UTC, datetime, timedelta
 
     real_ts = datetime.now(UTC) - timedelta(days=3)
-    db_session.add(
-        TickerQuote(ticker="UVE", last_price=99.99, source="yfinance", as_of=real_ts)
-    )
+    db_session.add(TickerQuote(ticker="UVE", last_price=99.99, source="yfinance", as_of=real_ts))
     db_session.commit()
 
     seed(db_session, clear=True)

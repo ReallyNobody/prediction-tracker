@@ -143,10 +143,7 @@ def _parse_sector_csv(raw: str | None) -> list[str] | None:
     if bad:
         raise HTTPException(
             status_code=400,
-            detail=(
-                f"Unknown sector(s): {bad}. "
-                f"Valid: {sorted(_VALID_SECTORS)}"
-            ),
+            detail=(f"Unknown sector(s): {bad}. Valid: {sorted(_VALID_SECTORS)}"),
         )
     return items
 

@@ -73,9 +73,7 @@ def test_endpoint_filters_by_sector(client: TestClient, db_session: Session) -> 
 
 def test_endpoint_filters_by_multiple_sectors(client: TestClient, db_session: Session) -> None:
     load_universe.cache_clear()
-    response = client.get(
-        "/api/v1/quotes/hurricane-universe?sectors=insurer,reinsurer"
-    )
+    response = client.get("/api/v1/quotes/hurricane-universe?sectors=insurer,reinsurer")
     assert response.status_code == 200
     sectors = {row["sector"] for row in response.json()["tickers"]}
     assert sectors == {"insurer", "reinsurer"}
@@ -113,9 +111,7 @@ def test_endpoint_combines_sector_and_state_filters(
 ) -> None:
     """Sector + state intersect — narrowest filter wins."""
     load_universe.cache_clear()
-    response = client.get(
-        "/api/v1/quotes/hurricane-universe?sectors=utility&states=FL"
-    )
+    response = client.get("/api/v1/quotes/hurricane-universe?sectors=utility&states=FL")
     assert response.status_code == 200
     rows = response.json()["tickers"]
     assert all(row["sector"] == "utility" for row in rows)

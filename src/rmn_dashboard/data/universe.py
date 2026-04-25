@@ -43,12 +43,59 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 # entry might legitimately list them (e.g. a Caribbean utility).
 _VALID_US_STATES: frozenset[str] = frozenset(
     {
-        "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL",
-        "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME",
-        "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH",
-        "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI",
-        "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI",
-        "WY", "PR", "VI",
+        "AL",
+        "AK",
+        "AZ",
+        "AR",
+        "CA",
+        "CO",
+        "CT",
+        "DE",
+        "DC",
+        "FL",
+        "GA",
+        "HI",
+        "ID",
+        "IL",
+        "IN",
+        "IA",
+        "KS",
+        "KY",
+        "LA",
+        "ME",
+        "MD",
+        "MA",
+        "MI",
+        "MN",
+        "MS",
+        "MO",
+        "MT",
+        "NE",
+        "NV",
+        "NH",
+        "NJ",
+        "NM",
+        "NY",
+        "NC",
+        "ND",
+        "OH",
+        "OK",
+        "OR",
+        "PA",
+        "RI",
+        "SC",
+        "SD",
+        "TN",
+        "TX",
+        "UT",
+        "VT",
+        "VA",
+        "WA",
+        "WV",
+        "WI",
+        "WY",
+        "PR",
+        "VI",
     }
 )
 
@@ -173,17 +220,13 @@ def load_universe(path: Path | None = None) -> Universe:
 # ----- Query helpers ------------------------------------------------------
 
 
-def filter_by_sector(
-    universe: Universe, sectors: Iterable[Sector]
-) -> tuple[UniverseEntry, ...]:
+def filter_by_sector(universe: Universe, sectors: Iterable[Sector]) -> tuple[UniverseEntry, ...]:
     """Subset the universe to entries in any of the given sectors."""
     wanted = set(sectors)
     return tuple(entry for entry in universe.tickers if entry.sector in wanted)
 
 
-def tickers_for_states(
-    universe: Universe, states: Iterable[str]
-) -> tuple[UniverseEntry, ...]:
+def tickers_for_states(universe: Universe, states: Iterable[str]) -> tuple[UniverseEntry, ...]:
     """Universe entries whose ``key_states`` intersect any of ``states``.
 
     Drives the Panel 2 cone-overlap highlight: when Panel 1 has an

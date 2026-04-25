@@ -98,15 +98,9 @@ def _default_fetch_one(ticker: str) -> dict[str, Any] | None:
             "previous_close": _coerce_float(
                 fi.get("previousClose") or getattr(fi, "previous_close", None)
             ),
-            "last_volume": _coerce_int(
-                fi.get("lastVolume") or getattr(fi, "last_volume", None)
-            ),
-            "market_cap": _coerce_float(
-                fi.get("marketCap") or getattr(fi, "market_cap", None)
-            ),
-            "currency": str(
-                fi.get("currency") or getattr(fi, "currency", None) or "USD"
-            ).upper(),
+            "last_volume": _coerce_int(fi.get("lastVolume") or getattr(fi, "last_volume", None)),
+            "market_cap": _coerce_float(fi.get("marketCap") or getattr(fi, "market_cap", None)),
+            "currency": str(fi.get("currency") or getattr(fi, "currency", None) or "USD").upper(),
         }
     except Exception:  # noqa: BLE001 — yfinance raises a wide variety; log-and-skip
         logger.exception("yfinance fetch failed for %s", ticker)
@@ -197,7 +191,5 @@ def fetch_universe_quotes(
             continue
         snapshots.append(_to_snapshot(entry.ticker, info, fetched_at=fetched_at))
 
-    logger.info(
-        "yfinance scrape returned %d/%d snapshots", len(snapshots), len(universe.tickers)
-    )
+    logger.info("yfinance scrape returned %d/%d snapshots", len(snapshots), len(universe.tickers))
     return snapshots

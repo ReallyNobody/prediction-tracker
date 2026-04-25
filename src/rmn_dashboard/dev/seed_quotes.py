@@ -141,11 +141,7 @@ def _insert_rows(db: Session, universe: Universe) -> int:
     for entry in universe.tickers:
         # Skip tickers that already have a row at SEED_AS_OF — re-running
         # without --clear is idempotent.
-        existing = (
-            db.query(TickerQuote)
-            .filter_by(ticker=entry.ticker, as_of=SEED_AS_OF)
-            .first()
-        )
+        existing = db.query(TickerQuote).filter_by(ticker=entry.ticker, as_of=SEED_AS_OF).first()
         if existing is not None:
             continue
         info = _mock_quote_for(entry)
