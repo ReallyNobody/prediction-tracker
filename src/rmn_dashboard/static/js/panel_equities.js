@@ -41,9 +41,14 @@
     // forecast (for cone-overlap highlight). Forecast may 4xx/5xx or
     // return zero storms; that's a non-event for Panel 2 — we just
     // skip the highlight in that case.
-    const quotesPromise = fetch("/api/v1/quotes/hurricane-universe", {
-      headers: { Accept: "application/json" },
-    }).then(function (r) {
+    //
+    // The sectors filter excludes cat_bond_etf — those entries belong
+    // in Panel 3 ("Cat bond market"), and the equity grid would feel
+    // inconsistent if a fund tile sat among individual-company tiles.
+    const quotesPromise = fetch(
+      "/api/v1/quotes/hurricane-universe?sectors=insurer,reinsurer,homebuilder,utility",
+      { headers: { Accept: "application/json" } },
+    ).then(function (r) {
       if (!r.ok) {
         throw new Error("quotes-feed " + r.status);
       }

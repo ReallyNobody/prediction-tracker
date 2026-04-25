@@ -56,12 +56,48 @@ def test_bundled_universe_loads_cleanly() -> None:
     """
     universe = load_universe()
     assert isinstance(universe, Universe)
-    # Sanity: we expect ~35 tickers in the launch roster. Don't pin the
-    # exact number — that becomes a friction tax on legitimate edits.
+    # Sanity: we expect ~35 tickers in the launch roster, plus 1+ cat
+    # bond ETFs. Don't pin the exact number — that becomes a friction
+    # tax on legitimate edits.
     assert 20 <= len(universe.tickers) <= 80
-    # Every sector represented at least once — drives the Panel 2 filter pills.
+    # All five sectors represented at least once.
+    # - insurer/reinsurer/homebuilder/utility drive Panel 2 filter pills.
+    # - cat_bond_etf drives Panel 3 (cat bond market proxy).
     sectors = {entry.sector for entry in universe.tickers}
-    assert sectors == {"insurer", "reinsurer", "homebuilder", "utility"}
+    assert sectors == {
+        "insurer",
+        "reinsurer",
+        "homebuilder",
+        "utility",
+        "cat_bond_etf",
+    }
+
+
+def test_bundled_universe_includes_cat_bond_etf_proxy() -> None:
+    """Panel 3 needs at least one cat_bond_etf entry. Lock it down so a
+    future YAML cleanup that accidentally drops the row doesn't silently
+    blank Panel 3 in prod.
+    """
+    universe = load_universe()
+    cat_bond_etfs = filter_by_sector(universe, ["cat_bond_etf"])
+    assert cat_bond_etfs, "expected at least one cat_bond_etf in the bundled universe"
+    tickers = {entry.ticker for entry in cat_bond_etfs}
+    # ILS is the launch proxy; if we swap it for a different fund later,
+    # update the test deliberately rather than silently.
+    assert "ILS" in tickers
+
+
+def test_bundled_cat_bond_etfs_have_empty_key_states() -> None:
+    """Editorial rule: cat bond ETFs hold global books, same as
+    reinsurers — empty key_states by convention so they don't light
+    up on a single-state cone overlap.
+    """
+    universe = load_universe()
+    for entry in filter_by_sector(universe, ["cat_bond_etf"]):
+        assert entry.key_states == (), (
+            f"cat_bond_etf {entry.ticker} has key_states={entry.key_states}; "
+            "should be empty by editorial convention"
+        )
 
 
 def test_bundled_universe_has_no_duplicate_tickers() -> None:

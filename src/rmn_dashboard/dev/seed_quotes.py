@@ -92,6 +92,10 @@ def _mock_quote_for(entry: UniverseEntry) -> dict[str, float | int | None]:
         "reinsurer": 130.0,
         "homebuilder": 90.0,
         "utility": 65.0,
+        # Cat bond ETFs trade in the $20-25 range historically — UCITS
+        # cat bond fund NAVs cluster there. Use a tighter dev-seed
+        # range so the panel renders a plausible number off-season.
+        "cat_bond_etf": 22.0,
     }[entry.sector]
 
     # Spread the price 0.5x-1.8x the sector base, deterministic per ticker.

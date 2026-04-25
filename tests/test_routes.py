@@ -31,15 +31,15 @@ def test_index_returns_html_with_panel_shells(client: TestClient) -> None:
     # matches total.
     assert body.count("panel-shell") == 8
 
-    # Each panel heading is present. Day 14 renamed the Week-3 placeholder
-    # "Carrier exposure" to "Companies on the line" — we pivoted that
-    # panel from a static NAIC state map to a live equity ticker.
+    # Each panel heading is present. Day 14 renamed Carrier Exposure →
+    # Companies on the line; Day 15 renamed Cat Bond Spreads → Cat bond
+    # market when we pivoted from gated index data to a public ETF proxy.
     for heading in (
         "Active storms",
         "Markets on it",
         "Landfall probability",
         "Companies on the line",
-        "Cat bond spreads",
+        "Cat bond market",
         "Historical analogs",
         "What changed today",
     ):
@@ -128,6 +128,22 @@ def test_index_wires_up_equities_panel(client: TestClient) -> None:
         assert f'data-sector="{sector}"' in body, f"missing sector pill: {sector}"
     # Loader script.
     assert "/static/js/panel_equities.js" in body
+
+
+def test_index_wires_up_cat_bonds_panel(client: TestClient) -> None:
+    """Panel 3 (Cat bond market) ships its readout container, empty
+    state, as-of label, and the loader script.
+
+    Smoke test only — no JS exercised. ``panel_cat_bonds.js`` targets
+    each of these IDs by string and pulls
+    /api/v1/quotes/hurricane-universe?sectors=cat_bond_etf, so losing
+    any of them silently breaks the panel.
+    """
+    body = client.get("/").text
+    assert 'id="cat-bonds-readout"' in body
+    assert 'id="cat-bonds-empty"' in body
+    assert 'id="cat-bonds-as-of"' in body
+    assert "/static/js/panel_cat_bonds.js" in body
 
 
 def test_index_wires_up_landfall_map(client: TestClient) -> None:
