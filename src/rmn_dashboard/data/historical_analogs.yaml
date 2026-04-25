@@ -1,0 +1,200 @@
+# =====================================================================
+# historical_analogs.yaml
+# =====================================================================
+#
+# Curated set of past Atlantic / Gulf hurricanes used as historical
+# analogs for Panel 5 ("Historical analogs"). When Panel 1 has an
+# active forecast, the analog finder scores each entry by distance
+# from its landfall to the active forecast cone's centroid and shows
+# the top 2-3 most-similar storms. Off-season the panel falls back
+# to the 3 most-recent entries.
+#
+# Each entry pairs the meteorological facts (peak winds, landfall lat
+# / lon / state, Saffir-Simpson at landfall) with the editorial payoff
+# (insured loss in 2024 USD, one-line narrative). Loss figures are
+# nominal industry-wide estimates from III / Munich Re / NHC TCRs;
+# small-double-digit billions of precision is fine for "comparable to"
+# captions, not financial reporting.
+#
+# Roster bias is intentional: 8 of 12 are FL or Gulf Coast, matching
+# the Atlantic basin focus of the dashboard. Add Pacific or North
+# Atlantic outliers only when they earn their slot editorially.
+#
+# Field reference:
+#   name                 Common name. Matches cat_losses.event_name
+#                        format ("Hurricane Ian", "Hurricane Sandy").
+#   year                 Calendar year of US landfall (or last impact).
+#   peak_kt              Peak sustained intensity (knots) at any point
+#                        in the storm's lifecycle. Editorial color.
+#   saffir_simpson_at_landfall  Cat 1-5, US landfall reading.
+#   landfall_lat / lon   Decimal degrees. Center of US impact (first
+#                        landfall, or storm-track centerline if track
+#                        was a glancing blow).
+#   landfall_state       Two-letter US state, or "PR" / "USVI".
+#   insured_loss_usd_billions   Approximate insured-industry loss in
+#                        2024 USD. Sourced from III / Munich Re /
+#                        Aon — round to single decimal.
+#   narrative            One-line caption rendered in the panel card.
+#                        Editorial voice; ~15-25 words.
+# =====================================================================
+
+version: 1
+last_reviewed: 2026-04-25
+
+analogs:
+
+  - name: Hurricane Andrew
+    year: 1992
+    peak_kt: 150
+    saffir_simpson_at_landfall: 5
+    landfall_lat: 25.5
+    landfall_lon: -80.3
+    landfall_state: FL
+    insured_loss_usd_billions: 27.0
+    narrative: >
+      South Florida Cat 5; the storm that rewrote how Florida
+      regulates property insurance. Set the benchmark for "uninsurable
+      coast" that still shapes carrier withdrawals today.
+
+  - name: Hurricane Katrina
+    year: 2005
+    peak_kt: 150
+    saffir_simpson_at_landfall: 3
+    landfall_lat: 29.3
+    landfall_lon: -89.6
+    landfall_state: LA
+    insured_loss_usd_billions: 89.0
+    narrative: >
+      Louisiana Cat 3 at landfall; near-total loss of New Orleans levee
+      system. Largest insured catastrophe in US history pre-Helene;
+      the reference point for "system-failure" loss scenarios.
+
+  - name: Hurricane Wilma
+    year: 2005
+    peak_kt: 160
+    saffir_simpson_at_landfall: 3
+    landfall_lat: 26.0
+    landfall_lon: -81.7
+    landfall_state: FL
+    insured_loss_usd_billions: 25.0
+    narrative: >
+      Cape Romano FL Cat 3 after a Mexico landfall; closed out the
+      record-setting 2005 season. Last major hurricane to strike
+      Florida until Irma 12 years later.
+
+  - name: Hurricane Ike
+    year: 2008
+    peak_kt: 125
+    saffir_simpson_at_landfall: 2
+    landfall_lat: 29.3
+    landfall_lon: -94.7
+    landfall_state: TX
+    insured_loss_usd_billions: 30.0
+    narrative: >
+      Galveston Cat 2 with a 600-mile windfield. Refinery and
+      petrochemical exposure rewrote Texas commercial-property
+      pricing for a decade.
+
+  - name: Hurricane Sandy
+    year: 2012
+    peak_kt: 100
+    saffir_simpson_at_landfall: 1
+    landfall_lat: 39.4
+    landfall_lon: -74.4
+    landfall_state: NJ
+    insured_loss_usd_billions: 25.0
+    narrative: >
+      Post-tropical at NJ landfall but with hurricane-force gusts and
+      $25B in insured losses. Reset Northeast storm-surge underwriting
+      and made FEMA flood-map reform a national issue.
+
+  - name: Hurricane Harvey
+    year: 2017
+    peak_kt: 115
+    saffir_simpson_at_landfall: 4
+    landfall_lat: 28.1
+    landfall_lon: -97.0
+    landfall_state: TX
+    insured_loss_usd_billions: 30.0
+    narrative: >
+      South Texas Cat 4 followed by 60 inches of rain over Houston.
+      The defining example of why flood and wind insurance are
+      separate products — and how that gap leaves homeowners exposed.
+
+  - name: Hurricane Irma
+    year: 2017
+    peak_kt: 155
+    saffir_simpson_at_landfall: 4
+    landfall_lat: 24.7
+    landfall_lon: -81.5
+    landfall_state: FL
+    insured_loss_usd_billions: 19.0
+    narrative: >
+      Florida Keys Cat 4 with statewide impact; first major hurricane
+      to strike Florida since Wilma 2005. Forced Florida specialty
+      carriers to disclose true Atlantic-basin concentration.
+
+  - name: Hurricane Maria
+    year: 2017
+    peak_kt: 150
+    saffir_simpson_at_landfall: 4
+    landfall_lat: 18.1
+    landfall_lon: -65.9
+    landfall_state: PR
+    insured_loss_usd_billions: 41.0
+    narrative: >
+      Puerto Rico Cat 4; among the costliest Atlantic hurricanes ever.
+      Under-insurance gap (vs. economic loss) made it the rebuild
+      story that reframed how analysts read "insured loss" headlines.
+
+  - name: Hurricane Michael
+    year: 2018
+    peak_kt: 140
+    saffir_simpson_at_landfall: 5
+    landfall_lat: 30.0
+    landfall_lon: -85.5
+    landfall_state: FL
+    insured_loss_usd_billions: 25.0
+    narrative: >
+      Florida Panhandle Cat 5; only the fourth Cat 5 to make US
+      landfall in the modern record. Exposed how rural-coastal
+      carriers concentrate risk in lightly-developed coastline.
+
+  - name: Hurricane Ian
+    year: 2022
+    peak_kt: 135
+    saffir_simpson_at_landfall: 4
+    landfall_lat: 26.6
+    landfall_lon: -82.3
+    landfall_state: FL
+    insured_loss_usd_billions: 63.0
+    narrative: >
+      Cayo Costa FL Cat 4 with catastrophic SW Florida storm surge.
+      Drove a wave of Florida-specialist insolvencies and reset the
+      reinsurance market's June-renewal pricing.
+
+  - name: Hurricane Helene
+    year: 2024
+    peak_kt: 120
+    saffir_simpson_at_landfall: 4
+    landfall_lat: 30.0
+    landfall_lon: -83.6
+    landfall_state: FL
+    insured_loss_usd_billions: 50.0
+    narrative: >
+      Big Bend FL Cat 4; remarkable for damage hundreds of miles
+      inland, into NC mountain communities. Forced re-pricing of
+      "uninsured-by-default" inland flood exposure.
+
+  - name: Hurricane Milton
+    year: 2024
+    peak_kt: 155
+    saffir_simpson_at_landfall: 3
+    landfall_lat: 27.3
+    landfall_lon: -82.5
+    landfall_state: FL
+    insured_loss_usd_billions: 25.0
+    narrative: >
+      Siesta Key FL Cat 3, two weeks after Helene struck the same
+      state. Demonstrated how insurer modeling underweights season
+      clustering — two majors in the same state in two weeks.

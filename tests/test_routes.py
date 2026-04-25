@@ -130,6 +130,33 @@ def test_index_wires_up_equities_panel(client: TestClient) -> None:
     assert "/static/js/panel_equities.js" in body
 
 
+def test_index_wires_up_analogs_panel(client: TestClient) -> None:
+    """Panel 5 (Historical analogs) ships its readout container, empty
+    state, framing label, and the loader script.
+
+    Smoke test only — no JS exercised. ``panel_analogs.js`` targets
+    each of these IDs by string and pulls /api/v1/analogs.
+    """
+    body = client.get("/").text
+    assert 'id="analogs-readout"' in body
+    assert 'id="analogs-empty"' in body
+    assert 'id="analogs-framing"' in body
+    assert "/static/js/panel_analogs.js" in body
+
+
+def test_analogs_endpoint_returns_offseason_payload(client: TestClient) -> None:
+    """``/api/v1/analogs`` on a fresh DB (no active storms) responds
+    in offseason mode with non-empty analogs.
+    """
+    response = client.get("/api/v1/analogs")
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body.keys()) == {"mode", "framing", "analogs"}
+    assert body["mode"] == "offseason"
+    assert isinstance(body["analogs"], list)
+    assert len(body["analogs"]) >= 1
+
+
 def test_index_wires_up_changes_panel(client: TestClient) -> None:
     """Panel 6 (What changed today) ships its readout container, empty
     state, as-of label, and the loader script.

@@ -24,6 +24,7 @@ from rmn_dashboard.database import get_session
 from rmn_dashboard.services.daily_changes import todays_changes
 from rmn_dashboard.services.equity_quotes import latest_universe_quotes
 from rmn_dashboard.services.forecasts import active_storm_forecasts
+from rmn_dashboard.services.historical_analogs import find_analogs
 
 router = APIRouter(prefix="/api/v1", tags=["forecasts"])
 
@@ -158,6 +159,41 @@ def _parse_state_csv(raw: str | None) -> list[str] | None:
         return None
     items = [s.strip() for s in raw.split(",") if s.strip()]
     return items or None
+
+
+@router.get("/analogs")
+def get_historical_analogs(
+    limit: int = Query(default=3, ge=1, le=10),
+    db: Session = Depends(get_session),
+) -> dict[str, object]:
+    """Return historical-storm analogs for Panel 5.
+
+    Active forecast → ranked by haversine distance from cone centroid
+    to each analog's landfall (closest first). Off-season → most-recent
+    N by year. The ``mode`` field in the response tells the JS which
+    framing copy to render.
+
+    Response shape::
+
+        {
+          "mode": "active" | "offseason",
+          "framing": "Most similar past landfalls to today's forecast",
+          "analogs": [
+            {
+              "name": "Hurricane Ian",
+              "year": 2022,
+              "peak_kt": 135,
+              "saffir_simpson_at_landfall": 4,
+              "landfall_state": "FL",
+              "insured_loss_usd_billions": 63.0,
+              "narrative": "Cayo Costa FL Cat 4 with catastrophic ...",
+              "distance_km": 187     // active mode only
+            },
+            ...
+          ]
+        }
+    """
+    return find_analogs(db, limit=limit)
 
 
 @router.get("/changes/today")
