@@ -31,12 +31,14 @@ def test_index_returns_html_with_panel_shells(client: TestClient) -> None:
     # matches total.
     assert body.count("panel-shell") == 8
 
-    # Each panel heading is present.
+    # Each panel heading is present. Day 14 renamed the Week-3 placeholder
+    # "Carrier exposure" to "Companies on the line" — we pivoted that
+    # panel from a static NAIC state map to a live equity ticker.
     for heading in (
         "Active storms",
         "Markets on it",
         "Landfall probability",
-        "Carrier exposure",
+        "Companies on the line",
         "Cat bond spreads",
         "Historical analogs",
         "What changed today",
@@ -101,6 +103,31 @@ def test_index_wires_up_forecast_map(client: TestClient) -> None:
     assert "unpkg.com/leaflet@1.9.4" in body
     # The client-side loader that consumes /api/v1/forecasts/active.
     assert "/static/js/forecast_map.js" in body
+
+
+def test_index_wires_up_equities_panel(client: TestClient) -> None:
+    """Panel 2 (Companies on the line) ships its sector-filter pills,
+    ticker grid container, empty-state div, as-of readout, and the
+    loader script.
+
+    Smoke test only — doesn't exercise the JS. ``panel_equities.js``
+    targets each of these IDs by string, and the four sector pills'
+    ``data-sector`` values must match the sector Literal in
+    ``data/universe.py`` exactly. Losing any of them silently breaks
+    the panel.
+    """
+    body = client.get("/").text
+    # Container + empty-state + as-of readout.
+    assert 'id="equities-grid"' in body
+    assert 'id="equities-empty"' in body
+    assert 'id="equities-as-of"' in body
+    # Sector filter pills — values must match the Sector Literal in
+    # data/universe.py, plus an "all" reset pill.
+    assert 'id="equities-sector-pills"' in body
+    for sector in ("all", "insurer", "reinsurer", "homebuilder", "utility"):
+        assert f'data-sector="{sector}"' in body, f"missing sector pill: {sector}"
+    # Loader script.
+    assert "/static/js/panel_equities.js" in body
 
 
 def test_index_wires_up_landfall_map(client: TestClient) -> None:

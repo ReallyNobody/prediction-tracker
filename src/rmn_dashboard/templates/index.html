@@ -4,6 +4,7 @@
 {% block content %}
   <script src="{{ url_for('static', path='/js/forecast_map.js') }}" defer></script>
   <script src="{{ url_for('static', path='/js/panel_landfall.js') }}" defer></script>
+  <script src="{{ url_for('static', path='/js/panel_equities.js') }}" defer></script>
 
   <section class="mb-6">
     <p class="max-w-3xl text-sm text-slate-600 leading-relaxed">
@@ -128,13 +129,79 @@
       </div>
     </section>
 
-    {#  Panel 2 — Carrier exposure map  #}
-    <section class="panel-shell rounded-lg border border-slate-200 bg-white p-5 lg:col-span-2">
-      <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">
-        Carrier exposure
-      </h2>
-      <div class="mt-3 text-slate-400">
-        <p class="text-sm">NAIC-sourced state map lands in Week 3.</p>
+    {#
+      Panel 2 — Companies on the line.
+
+      Live equity ticker for the curated hurricane-exposed universe
+      (insurers + reinsurers + homebuilders + utilities). Filled by
+      panel_equities.js from /api/v1/quotes/hurricane-universe. Sector
+      filter pills toggle the visible set client-side; the cone-overlap
+      highlight tags any ticker whose key_states intersect the affected
+      states from Panel 1's active forecast.
+
+      The Carrier Exposure heading from the Week 3 plan was renamed:
+      we pivoted from a static NAIC state map to live equities because
+      a moving stock price IS the market's real-time pricing of the
+      same risk. NAIC-style state-level insurer detail returns later
+      as a click-through drill-down per row (Panel 2b, post-launch).
+    #}
+    <section class="panel-shell rounded-lg border border-slate-200 bg-white p-5 lg:col-span-2"
+             data-testid="equities-panel">
+      <div class="flex items-baseline justify-between gap-3 flex-wrap">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">
+          Companies on the line
+        </h2>
+        <p id="equities-as-of"
+           class="text-xs text-slate-400 font-mono"
+           data-testid="equities-as-of"></p>
+      </div>
+      <p class="mt-1 text-xs text-slate-400 max-w-3xl">
+        Public US-listed companies with material Atlantic / Gulf
+        hurricane exposure. Quote data via Yahoo Finance, ~15-minute
+        delayed.
+      </p>
+
+      {#
+        Sector filter pills. Buttons (not <select>) so users can see
+        all four sector counts at a glance and click the one they want.
+        Initial state: All highlighted; the JS swaps the active class
+        between buttons on click.
+      #}
+      <div class="mt-3 flex flex-wrap gap-2 text-xs"
+           id="equities-sector-pills"
+           data-testid="equities-sector-pills">
+        <button type="button"
+                data-sector="all"
+                class="equities-pill rounded-full border border-slate-300 px-3 py-1 hover:bg-slate-50 aria-pressed:bg-slate-900 aria-pressed:text-white aria-pressed:border-slate-900"
+                aria-pressed="true">All</button>
+        <button type="button"
+                data-sector="insurer"
+                class="equities-pill rounded-full border border-slate-300 px-3 py-1 hover:bg-slate-50 aria-pressed:bg-slate-900 aria-pressed:text-white aria-pressed:border-slate-900"
+                aria-pressed="false">Insurers</button>
+        <button type="button"
+                data-sector="reinsurer"
+                class="equities-pill rounded-full border border-slate-300 px-3 py-1 hover:bg-slate-50 aria-pressed:bg-slate-900 aria-pressed:text-white aria-pressed:border-slate-900"
+                aria-pressed="false">Reinsurers</button>
+        <button type="button"
+                data-sector="homebuilder"
+                class="equities-pill rounded-full border border-slate-300 px-3 py-1 hover:bg-slate-50 aria-pressed:bg-slate-900 aria-pressed:text-white aria-pressed:border-slate-900"
+                aria-pressed="false">Homebuilders</button>
+        <button type="button"
+                data-sector="utility"
+                class="equities-pill rounded-full border border-slate-300 px-3 py-1 hover:bg-slate-50 aria-pressed:bg-slate-900 aria-pressed:text-white aria-pressed:border-slate-900"
+                aria-pressed="false">Utilities</button>
+      </div>
+
+      {#
+        Grid + empty state. Two columns on phone, three at md (~768px),
+        four at lg (~1024px). Each tile is a compact ticker card —
+        symbol, name, last price, change %, sector tag.
+      #}
+      <div id="equities-grid"
+           class="mt-3 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 hidden"
+           data-testid="equities-grid"></div>
+      <div id="equities-empty" class="mt-3 text-slate-400">
+        <p class="text-sm">Loading hurricane-exposed equities…</p>
       </div>
     </section>
 
