@@ -186,14 +186,16 @@
 
     // Tile container styling:
     //   - rounded card with thin border, hover lifts to slate-50
-    //   - if in-cone, add a subtle amber ring to flag the storm exposure
-    const ringClass = inCone
-      ? "ring-1 ring-amber-300 bg-amber-50"
-      : "bg-white";
+    //   - if in-cone, add a subtle amber ring (no background fill) to
+    //     flag storm exposure. The ring-only treatment keeps the panel
+    //     readable when many tickers are exposed at once (e.g. dual
+    //     storm tracking the same coast); a bg fill made it feel like
+    //     the highlight was the panel's default state instead of a signal.
+    const ringClass = inCone ? "ring-1 ring-amber-300" : "";
     const sectorBadge = sectorBadgeHtml(entry.sector);
 
     return (
-      '<div class="rounded border border-slate-200 ' + ringClass +
+      '<div class="rounded border border-slate-200 bg-white ' + ringClass +
       ' px-2 py-2 hover:bg-slate-50 transition-colors text-xs"' +
       ' data-ticker="' + escapeHtml(entry.ticker) + '"' +
       ' data-sector="' + escapeHtml(entry.sector) + '"' +
