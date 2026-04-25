@@ -130,6 +130,33 @@ def test_index_wires_up_equities_panel(client: TestClient) -> None:
     assert "/static/js/panel_equities.js" in body
 
 
+def test_index_wires_up_changes_panel(client: TestClient) -> None:
+    """Panel 6 (What changed today) ships its readout container, empty
+    state, as-of label, and the loader script.
+
+    Smoke test only — no JS exercised. ``panel_changes.js`` targets
+    each of these IDs by string and pulls /api/v1/changes/today.
+    """
+    body = client.get("/").text
+    assert 'id="changes-readout"' in body
+    assert 'id="changes-empty"' in body
+    assert 'id="changes-as-of"' in body
+    assert "/static/js/panel_changes.js" in body
+
+
+def test_changes_endpoint_returns_expected_shape(client: TestClient) -> None:
+    """``/api/v1/changes/today`` responds with the four-key payload
+    shape ``panel_changes.js`` reads. Fresh DB → empty lists / null.
+    """
+    response = client.get("/api/v1/changes/today")
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body.keys()) == {"as_of", "storms", "equities", "cat_bond"}
+    assert body["storms"] == []
+    assert body["equities"] == []
+    assert body["cat_bond"] is None
+
+
 def test_index_wires_up_cat_bonds_panel(client: TestClient) -> None:
     """Panel 3 (Cat bond market) ships its readout container, empty
     state, as-of label, and the loader script.

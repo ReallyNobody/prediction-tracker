@@ -6,6 +6,7 @@
   <script src="{{ url_for('static', path='/js/panel_landfall.js') }}" defer></script>
   <script src="{{ url_for('static', path='/js/panel_equities.js') }}" defer></script>
   <script src="{{ url_for('static', path='/js/panel_cat_bonds.js') }}" defer></script>
+  <script src="{{ url_for('static', path='/js/panel_changes.js') }}" defer></script>
 
   <section class="mb-6">
     <p class="max-w-3xl text-sm text-slate-600 leading-relaxed">
@@ -254,13 +255,37 @@
       </div>
     </section>
 
-    {#  Panel 6 — What changed today  #}
-    <section class="panel-shell rounded-lg border border-slate-200 bg-white p-5">
-      <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">
-        What changed today
-      </h2>
-      <div class="mt-3 text-slate-400">
-        <p class="text-sm">Daily delta rollup lands in Week 5.</p>
+    {#
+      Panel 6 — What changed today.
+
+      Pure derived data, no new ingest. Service layer
+      (services/daily_changes.todays_changes) aggregates day-over-day
+      deltas across StormObservation (intensity / classification),
+      TickerQuote (top equity movers + cat bond proxy). Panel renders
+      a small grouped readout — three storm lines max, three equity
+      movers max, one cat bond line. Nothing notable on a quiet day
+      collapses to a single "Quiet day" message rather than a long
+      list of unchanged items.
+
+      Lives in the right column at lg width — sits next to Panel 5
+      (Historical analogs, currently a placeholder) so the bottom
+      row reads "what's similar in the past · what shifted today."
+    #}
+    <section class="panel-shell rounded-lg border border-slate-200 bg-white p-5"
+             data-testid="changes-panel">
+      <div class="flex items-baseline justify-between gap-3 flex-wrap">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">
+          What changed today
+        </h2>
+        <p id="changes-as-of"
+           class="text-xs text-slate-400 font-mono"
+           data-testid="changes-as-of"></p>
+      </div>
+      <div id="changes-readout"
+           class="mt-3 hidden"
+           data-testid="changes-readout"></div>
+      <div id="changes-empty" class="mt-3 text-slate-400">
+        <p class="text-sm">Loading today's deltas…</p>
       </div>
     </section>
 

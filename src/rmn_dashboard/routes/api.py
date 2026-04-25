@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from rmn_dashboard.data.universe import Sector
 from rmn_dashboard.database import get_session
+from rmn_dashboard.services.daily_changes import todays_changes
 from rmn_dashboard.services.equity_quotes import latest_universe_quotes
 from rmn_dashboard.services.forecasts import active_storm_forecasts
 
@@ -157,3 +158,35 @@ def _parse_state_csv(raw: str | None) -> list[str] | None:
         return None
     items = [s.strip() for s in raw.split(",") if s.strip()]
     return items or None
+
+
+@router.get("/changes/today")
+def get_todays_changes(db: Session = Depends(get_session)) -> dict[str, object]:
+    """Return a structured payload of day-over-day changes for Panel 6.
+
+    Response shape::
+
+        {
+          "as_of": "2026-04-25T17:30:00+00:00",
+          "storms": [
+            {"kind": "intensified", "name": "Foo",
+             "headline": "Foo intensified +15 kt to 95 kt."},
+            ...
+          ],
+          "equities": [
+            {"ticker": "UVE", "name": "Universal Insurance Holdings",
+             "sector": "insurer", "change_percent": 4.2,
+             "headline": "UVE +4.20% — Universal Insurance Holdings"},
+            ...
+          ],
+          "cat_bond": {
+            "ticker": "ILS", "name": "Insurance-Linked Securities ETF",
+            "change_percent": -0.8,
+            "headline": "ILS -0.80% — cat bond proxy."
+          } | null
+        }
+
+    Quiet days return empty ``storms``/``equities`` arrays — Panel 6's
+    JS renders an honest "Quiet day" message in that case.
+    """
+    return todays_changes(db)
