@@ -94,10 +94,14 @@ def test_bundled_reinsurers_have_empty_key_states() -> None:
 # ----- Schema validation negative cases ----------------------------------
 
 
+# Note: this string is intentionally NOT indented — when concatenated
+# with a dedented body, the result must be a valid top-level YAML mapping.
+# An earlier draft had 4-space indent here and PyYAML rejected the result
+# with "expected '<document start>', but found '<block sequence>'."
 _BASE_HEADER = """\
-    version: 1
-    last_reviewed: 2026-04-24
-    tickers:
+version: 1
+last_reviewed: 2026-04-24
+tickers:
 """
 
 

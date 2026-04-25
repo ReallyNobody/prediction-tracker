@@ -21,7 +21,7 @@ universe loader's ``tickers_for_states`` enforces.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import func, select
@@ -69,9 +69,18 @@ def _quote_to_dict(quote: TickerQuote) -> dict[str, Any]:
 
 
 def _isoformat(value: datetime | None) -> str | None:
-    """Stable ISO-8601 string for JSON output. ``None`` passes through."""
+    """Stable ISO-8601 string for JSON output. ``None`` passes through.
+
+    SQLite drops the timezone tag from ``DateTime(timezone=True)``
+    columns on read — every value comes back naive. Tag naive datetimes
+    as UTC before serializing so the JSON API never ships an ambiguous
+    timestamp (and matches Postgres's behavior in prod). All our writes
+    use ``datetime.now(UTC)`` so this is a faithful re-tag, not a guess.
+    """
     if value is None:
         return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
     return value.isoformat()
 
 

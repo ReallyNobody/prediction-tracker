@@ -36,7 +36,13 @@ def test_seed_inserts_one_row_per_universe_ticker(db_session: Session) -> None:
     assert summary["rows_inserted"] == len(universe.tickers)
 
     # Every row stamped with the same as_of — the read-side join needs that.
-    assert {r.as_of for r in rows} == {SEED_AS_OF}
+    # SQLite drops tzinfo on DateTime(timezone=True) round-trip so we
+    # compare wall-clock equality regardless of tz preservation
+    # (Postgres keeps the tag; SQLite doesn't; both should pass).
+    assert len({r.as_of for r in rows}) == 1
+    sample_ts = rows[0].as_of
+    expected_ts = SEED_AS_OF if sample_ts.tzinfo else SEED_AS_OF.replace(tzinfo=None)
+    assert sample_ts == expected_ts
     # Source is "dev-seed" so a developer can audit what came from where.
     assert {r.source for r in rows} == {"dev-seed"}
 
