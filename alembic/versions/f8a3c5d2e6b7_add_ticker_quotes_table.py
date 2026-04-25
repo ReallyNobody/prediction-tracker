@@ -69,17 +69,11 @@ def upgrade() -> None:
     # Indexes via batch_alter_table for SQLite's no-ADD-INDEX-on-create
     # behavior (matches the carrier_exposures pattern in 08a85c4).
     with op.batch_alter_table("ticker_quotes", schema=None) as batch_op:
-        batch_op.create_index(
-            batch_op.f("ix_ticker_quotes_ticker"), ["ticker"], unique=False
-        )
-        batch_op.create_index(
-            batch_op.f("ix_ticker_quotes_as_of"), ["as_of"], unique=False
-        )
+        batch_op.create_index(batch_op.f("ix_ticker_quotes_ticker"), ["ticker"], unique=False)
+        batch_op.create_index(batch_op.f("ix_ticker_quotes_as_of"), ["as_of"], unique=False)
         # Composite index speeds up the dedup join in
         # services/equity_quotes.latest_universe_quotes.
-        batch_op.create_index(
-            "ix_ticker_quotes_ticker_as_of", ["ticker", "as_of"], unique=False
-        )
+        batch_op.create_index("ix_ticker_quotes_ticker_as_of", ["ticker", "as_of"], unique=False)
 
 
 def downgrade() -> None:
