@@ -13,6 +13,7 @@ from rmn_dashboard.models.forecast import Forecast
 from rmn_dashboard.models.prediction_market import PredictionMarket
 from rmn_dashboard.models.storm import Storm
 from rmn_dashboard.models.storm_observation import StormObservation
+from rmn_dashboard.models.ticker_quote import TickerQuote
 
 __all__ = [
     "Base",
@@ -25,4 +26,5 @@ __all__ = [
     "CatBondQuote",
     "PredictionMarket",
     "DailySnapshot",
+    "TickerQuote",
 ]

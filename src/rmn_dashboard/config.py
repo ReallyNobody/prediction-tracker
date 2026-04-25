@@ -80,6 +80,16 @@ class Settings(BaseSettings):
             "new data."
         ),
     )
+    yfinance_ingest_interval_minutes: int = Field(
+        default=15,
+        ge=1,
+        description=(
+            "How often the scheduled yfinance equity-quote ingest fires "
+            "(minutes). Yahoo Finance is ~15 min delayed regardless, so a "
+            "shorter cadence than 15 minutes is wasted bandwidth — match "
+            "the delay window."
+        ),
+    )
 
     # --- Deployment ---
     host: str = Field(default="127.0.0.1")
