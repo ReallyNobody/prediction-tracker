@@ -40,12 +40,14 @@ from rmn_dashboard.database import SessionLocal
 from rmn_dashboard.tasks.ingest_kalshi import run_kalshi_ingest
 from rmn_dashboard.tasks.ingest_nhc import run_nhc_ingest
 from rmn_dashboard.tasks.ingest_nhc_forecasts import run_nhc_forecast_ingest
+from rmn_dashboard.tasks.ingest_yfinance import run_yfinance_ingest
 
 logger = logging.getLogger(__name__)
 
 KALSHI_JOB_ID = "kalshi_ingest"
 NHC_JOB_ID = "nhc_ingest"
 NHC_FORECAST_JOB_ID = "nhc_forecast_ingest"
+YFINANCE_JOB_ID = "yfinance_ingest"
 
 
 def _run_kalshi_ingest_job() -> None:
@@ -103,14 +105,37 @@ def _run_nhc_forecast_ingest_job() -> None:
         db.close()
 
 
+def _run_yfinance_ingest_job() -> None:
+    """APScheduler job wrapper for the hurricane-universe equity-quote ingest.
+
+    Same contract: never raises out to APScheduler, always closes its
+    session. yfinance hiccups are common (Yahoo periodically rotates
+    internal endpoints), and the per-ticker log-and-skip inside the
+    scraper means a partial scrape still persists what came back.
+    Outer ``except`` here is the belt-and-suspenders layer for
+    catastrophic failures (e.g. yfinance import error from a broken
+    venv, or a SQLAlchemy bulk insert that hits a constraint).
+    """
+    db = SessionLocal()
+    try:
+        count = run_yfinance_ingest(db)
+        logger.info("Scheduled yfinance ingest persisted %d rows", count)
+    except Exception:  # noqa: BLE001 — intentional blanket catch; see module docstring
+        logger.exception("Scheduled yfinance ingest failed; will retry next tick")
+    finally:
+        db.close()
+
+
 def build_scheduler(
     kalshi_interval_minutes: int,
     nhc_interval_minutes: int,
     nhc_forecast_interval_minutes: int,
+    yfinance_interval_minutes: int,
     *,
     kalshi_job: Callable[[], None] = _run_kalshi_ingest_job,
     nhc_job: Callable[[], None] = _run_nhc_ingest_job,
     nhc_forecast_job: Callable[[], None] = _run_nhc_forecast_ingest_job,
+    yfinance_job: Callable[[], None] = _run_yfinance_ingest_job,
     run_on_start: bool = True,
 ) -> BackgroundScheduler:
     """Construct (but do not start) a ``BackgroundScheduler`` with all ingest jobs.
@@ -161,6 +186,15 @@ def build_scheduler(
         trigger=IntervalTrigger(minutes=nhc_forecast_interval_minutes),
         id=NHC_FORECAST_JOB_ID,
         name="NHC forecast-product ingest",
+        next_run_time=now,
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        yfinance_job,
+        trigger=IntervalTrigger(minutes=yfinance_interval_minutes),
+        id=YFINANCE_JOB_ID,
+        name="yfinance hurricane-universe equity-quote ingest",
         next_run_time=now,
         max_instances=1,
         coalesce=True,
