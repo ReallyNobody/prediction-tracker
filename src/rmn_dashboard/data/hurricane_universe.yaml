@@ -1,0 +1,338 @@
+# =====================================================================
+# hurricane_universe.yaml
+# =====================================================================
+#
+# Curated list of US-listed equities with material Atlantic / Gulf /
+# Caribbean hurricane exposure. Drives Panel 2 of the RMN Hurricane
+# Dashboard: live price ticker (via yfinance) + cone-overlap highlight
+# when Panel 1 has an active storm whose forecast touches a ticker's
+# `key_states`.
+#
+# Authorship model:
+#   * This file IS the source of truth; curate by hand.
+#   * A nightly SEC EDGAR discovery job queries hurricane-adjacent SICs
+#     (6331 Fire/Marine/Casualty, 1531 Operative Builders, 4911 Electric
+#     Services, etc.) and flags filers NOT in this universe as an
+#     editorial review queue — it never auto-inserts. (Discovery job is
+#     post-launch; for now, review quarterly by hand.)
+#   * Review quarterly against latest 10-K / Schedule T filings; lock
+#     annually against new issuances, mergers, de-listings.
+#
+# Field definitions:
+#   ticker                 NYSE / Nasdaq symbol.
+#   name                   Common company name.
+#   sector                 insurer | reinsurer | homebuilder | utility
+#   cik                    SEC EDGAR Central Index Key. Null here —
+#                          ingest resolves from
+#                          https://www.sec.gov/files/company_tickers.json
+#                          (post-launch; leave null for now).
+#   key_states             Two-letter state abbrs where the company's
+#                          hurricane-exposed business concentrates.
+#                          Insurers: >~10% of DPW per Schedule T.
+#                          Homebuilders: >~5% of community count / 10-K.
+#                          Utilities: regulated service territory.
+#                          Empty list = global book (reinsurers).
+#   hurricane_relevance    high | medium | low — editorial weight,
+#                          used for default Panel 2 sort + relevance
+#                          badge.
+#   notes                  One-line tooltip copy.
+#
+# Tickers in this revision: 35
+#   - 11 insurers (3 FL-specialist + 8 national/commercial)
+#   -  6 reinsurers
+#   -  8 homebuilders
+#   - 10 utilities
+# =====================================================================
+
+version: 1
+last_reviewed: 2026-04-24
+
+tickers:
+
+  # --- Primary P&C insurers with Gulf / Atlantic wind exposure ---------
+
+  - ticker: UVE
+    name: Universal Insurance Holdings
+    sector: insurer
+    cik: null
+    key_states: [FL]
+    hurricane_relevance: high
+    notes: Florida homeowners specialist. Roughly 4/5 of DPW is FL wind.
+
+  - ticker: HCI
+    name: HCI Group
+    sector: insurer
+    cik: null
+    key_states: [FL]
+    hurricane_relevance: high
+    notes: Tampa-based FL homeowners specialist; some Gulf expansion.
+
+  - ticker: HRTG
+    name: Heritage Insurance Holdings
+    sector: insurer
+    cik: null
+    key_states: [FL, LA, NC, SC, AL]
+    hurricane_relevance: high
+    notes: SE coastal homeowners specialist; diversified from FL monoline.
+
+  - ticker: HIPO
+    name: Hippo Holdings
+    sector: insurer
+    cik: null
+    key_states: [FL, TX, NC, SC]
+    hurricane_relevance: medium
+    notes: Insurtech homeowners; growing Gulf book, nationwide footprint.
+
+  - ticker: ALL
+    name: Allstate
+    sector: insurer
+    cik: null
+    key_states: [FL, TX, GA, LA, NC, SC]
+    hurricane_relevance: medium
+    notes: National P&C; CAT losses a recurring quarterly-earnings item.
+
+  - ticker: AIG
+    name: American International Group
+    sector: insurer
+    cik: null
+    key_states: [FL, TX, LA, NC]
+    hurricane_relevance: medium
+    notes: Global commercial/P&C; hurricane one of many perils.
+
+  - ticker: TRV
+    name: The Travelers Companies
+    sector: insurer
+    cik: null
+    key_states: [FL, TX, GA, NC, SC, VA]
+    hurricane_relevance: medium
+    notes: National commercial + personal lines; sizable SE book.
+
+  - ticker: CB
+    name: Chubb
+    sector: insurer
+    cik: null
+    key_states: [FL, TX, NY, NJ]
+    hurricane_relevance: medium
+    notes: High-net-worth homeowners; concentrated coastal property.
+
+  - ticker: HIG
+    name: The Hartford
+    sector: insurer
+    cik: null
+    key_states: [FL, TX, NC]
+    hurricane_relevance: medium
+    notes: National commercial P&C; sizable small-business book in Gulf.
+
+  - ticker: CINF
+    name: Cincinnati Financial
+    sector: insurer
+    cik: null
+    key_states: [OH, NC, GA]
+    hurricane_relevance: low
+    notes: Midwest-primary commercial P&C; some SE / Mid-Atlantic wind.
+
+  - ticker: ORI
+    name: Old Republic International
+    sector: insurer
+    cik: null
+    key_states: [FL, TX]
+    hurricane_relevance: low
+    notes: Title + general insurance; modest direct hurricane exposure.
+
+  # --- Reinsurers (global books — key_states left empty by design) -----
+
+  - ticker: RNR
+    name: RenaissanceRe Holdings
+    sector: reinsurer
+    cik: null
+    key_states: []
+    hurricane_relevance: high
+    notes: Bermuda; one of the largest property-cat reinsurers globally.
+
+  - ticker: EG
+    name: Everest Group
+    sector: reinsurer
+    cik: null
+    key_states: []
+    hurricane_relevance: high
+    notes: Bermuda; diversified reinsurance + primary; big property-cat book.
+
+  - ticker: AXS
+    name: Axis Capital Holdings
+    sector: reinsurer
+    cik: null
+    key_states: []
+    hurricane_relevance: medium
+    notes: Bermuda; specialty insurance + reinsurance.
+
+  - ticker: ACGL
+    name: Arch Capital Group
+    sector: reinsurer
+    cik: null
+    key_states: []
+    hurricane_relevance: medium
+    notes: Bermuda; P&C + reinsurance + mortgage insurance.
+
+  - ticker: MKL
+    name: Markel Group
+    sector: reinsurer
+    cik: null
+    key_states: []
+    hurricane_relevance: medium
+    notes: Specialty insurance + Global Reinsurance segment.
+
+  - ticker: HG
+    name: Hamilton Insurance Group
+    sector: reinsurer
+    cik: null
+    key_states: []
+    hurricane_relevance: medium
+    notes: Bermuda; IPO'd Nov 2023; specialty + reinsurance.
+
+  # --- Homebuilders ---------------------------------------------------
+
+  - ticker: LEN
+    name: Lennar
+    sector: homebuilder
+    cik: null
+    key_states: [FL, TX, NC, SC, GA]
+    hurricane_relevance: high
+    notes: Largest US builder by revenue; FL a top-2 market.
+
+  - ticker: DHI
+    name: D.R. Horton
+    sector: homebuilder
+    cik: null
+    key_states: [TX, FL, NC, SC, GA]
+    hurricane_relevance: high
+    notes: Largest US builder by unit volume; TX + FL dominate the book.
+
+  - ticker: PHM
+    name: PulteGroup
+    sector: homebuilder
+    cik: null
+    key_states: [FL, TX, GA, NC]
+    hurricane_relevance: high
+    notes: FL and TX each >~15% of deliveries in recent years.
+
+  - ticker: TMHC
+    name: Taylor Morrison Home
+    sector: homebuilder
+    cik: null
+    key_states: [FL, TX, NC, SC, GA]
+    hurricane_relevance: high
+    notes: SE + TX concentrated; FL is the single largest market.
+
+  - ticker: MTH
+    name: Meritage Homes
+    sector: homebuilder
+    cik: null
+    key_states: [TX, FL, NC, SC, GA]
+    hurricane_relevance: high
+    notes: TX + Southeast entry-level / mid-market.
+
+  - ticker: KBH
+    name: KB Home
+    sector: homebuilder
+    cik: null
+    key_states: [TX, FL, NC]
+    hurricane_relevance: medium
+    notes: TX + FL + CA; mixed hurricane exposure.
+
+  - ticker: TOL
+    name: Toll Brothers
+    sector: homebuilder
+    cik: null
+    key_states: [FL, NC, VA, NJ]
+    hurricane_relevance: medium
+    notes: Higher-end; broader geographic spread than mid-market peers.
+
+  - ticker: LGIH
+    name: LGI Homes
+    sector: homebuilder
+    cik: null
+    key_states: [TX, FL, GA, NC, SC]
+    hurricane_relevance: medium
+    notes: TX + SE entry-level; much of book in storm zones.
+
+  # --- Utilities (Gulf / Atlantic service territories) ----------------
+
+  - ticker: NEE
+    name: NextEra Energy
+    sector: utility
+    cik: null
+    key_states: [FL]
+    hurricane_relevance: high
+    notes: Owns Florida Power & Light — Florida's dominant utility.
+
+  - ticker: DUK
+    name: Duke Energy
+    sector: utility
+    cik: null
+    key_states: [NC, SC, FL, IN, OH, KY]
+    hurricane_relevance: high
+    notes: Duke Energy Florida + Carolinas territories — heavy wind zone.
+
+  - ticker: SO
+    name: Southern Company
+    sector: utility
+    cik: null
+    key_states: [GA, AL, MS]
+    hurricane_relevance: high
+    notes: Georgia Power + Alabama Power + Mississippi Power — Gulf coast.
+
+  - ticker: ETR
+    name: Entergy
+    sector: utility
+    cik: null
+    key_states: [LA, TX, MS, AR]
+    hurricane_relevance: high
+    notes: Gulf Coast utility — New Orleans, Baton Rouge, Beaumont.
+
+  - ticker: CNP
+    name: CenterPoint Energy
+    sector: utility
+    cik: null
+    key_states: [TX, LA, MS]
+    hurricane_relevance: high
+    notes: Houston-area electric; took direct hit from Beryl in 2024.
+
+  - ticker: D
+    name: Dominion Energy
+    sector: utility
+    cik: null
+    key_states: [VA, NC, SC]
+    hurricane_relevance: medium
+    notes: Virginia + Carolinas; Mid-Atlantic storm-surge exposure.
+
+  - ticker: SRE
+    name: Sempra
+    sector: utility
+    cik: null
+    key_states: [TX, CA]
+    hurricane_relevance: medium
+    notes: Oncor (TX transmission) + CA gas; TX is the hurricane slice.
+
+  - ticker: PEG
+    name: Public Service Enterprise Group
+    sector: utility
+    cik: null
+    key_states: [NJ, NY]
+    hurricane_relevance: low
+    notes: NJ / NY territory — Sandy-type post-tropical exposure.
+
+  - ticker: ES
+    name: Eversource Energy
+    sector: utility
+    cik: null
+    key_states: [CT, MA, NH]
+    hurricane_relevance: low
+    notes: New England; occasional remnants of Atlantic systems.
+
+  - ticker: PPL
+    name: PPL Corporation
+    sector: utility
+    cik: null
+    key_states: [PA, KY, VA, RI]
+    hurricane_relevance: low
+    notes: PA + KY + RI; peripheral hurricane exposure.

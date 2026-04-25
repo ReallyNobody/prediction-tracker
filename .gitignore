@@ -33,7 +33,9 @@ secrets/
 *.pem
 
 # Data (local only; do not commit)
-data/
+# Anchored to repo root so it doesn't accidentally swallow package
+# data dirs like src/rmn_dashboard/data/ (which DOES ship to prod).
+/data/
 *.db
 *.sqlite
 *.sqlite3

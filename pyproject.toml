@@ -48,6 +48,15 @@ dependencies = [
 
     # Auth signing (Kalshi RSA-PSS)
     "cryptography>=42",
+
+    # YAML config (hurricane equity universe; possibly other curated lists later)
+    "PyYAML>=6.0",
+
+    # Yahoo Finance batch quote pulls for the Panel 2 equity ticker.
+    # No API key required; ~15-min delayed quotes. Yahoo periodically
+    # changes endpoints (~yearly), so plan to upgrade yfinance when
+    # it does — track via the dep's release notes.
+    "yfinance>=0.2.40",
 ]
 
 [project.optional-dependencies]
@@ -72,7 +81,11 @@ Repository = "https://github.com/ReallyNobody/prediction-tracker"
 where = ["src"]
 
 [tool.setuptools.package-data]
-rmn_dashboard = ["templates/**/*.html", "static/**/*"]
+rmn_dashboard = [
+    "templates/**/*.html",
+    "static/**/*",
+    "data/*.yaml",
+]
 
 [tool.ruff]
 line-length = 100
