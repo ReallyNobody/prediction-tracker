@@ -231,3 +231,45 @@ def test_healthz(client: TestClient) -> None:
     response = client.get("/healthz")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_index_ships_share_card_meta(client: TestClient) -> None:
+    """The index page advertises Open Graph + Twitter card metadata
+    so links preview cleanly when shared on social / chat platforms.
+
+    Smoke test only — we assert the tags are present, not that any
+    specific platform's renderer accepts them. A full preview check
+    is a manual pre-launch step (Twitter Card Validator / Facebook
+    Sharing Debugger).
+    """
+    body = client.get("/").text
+
+    # Author + theme + canonical — small but visible to crawlers and
+    # mobile browsers (theme-color tints the URL bar on Android).
+    assert 'name="author"' in body
+    assert 'name="theme-color"' in body
+    assert 'rel="canonical"' in body
+
+    # Open Graph: title, description, url, image, site_name, type are
+    # the minimum viable card. og:image dimensions are required by
+    # several crawlers to decide whether to render the large variant.
+    for meta in (
+        'property="og:title"',
+        'property="og:description"',
+        'property="og:url"',
+        'property="og:image"',
+        'property="og:image:width"',
+        'property="og:image:height"',
+        'property="og:site_name"',
+        'property="og:type"',
+    ):
+        assert meta in body, f"missing OG tag: {meta}"
+
+    # Twitter card. summary today (SVG og:image); summary_large_image
+    # post-PNG-conversion.
+    assert 'name="twitter:card"' in body
+    assert 'name="twitter:title"' in body
+    assert 'name="twitter:description"' in body
+
+    # The OG image is served from /static/, not embedded inline.
+    assert "og-image.svg" in body

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Open Graph share image — 1200×630, the canonical OG card size.
+
+  Rendered as SVG for crispness at any zoom level. NOTE: Twitter (per
+  its current docs) does not render SVG OG images and falls back to
+  the text-only card. Facebook, LinkedIn, Slack, iMessage, and Discord
+  *do* render SVG. Pre-launch TODO: convert this file to a 1200×630
+  PNG and reference both — most OG-tag-readers prefer PNG.
+
+  Styling stays minimal so the editorial voice does the work: dark
+  slate background to match the rest of the dashboard's restrained
+  palette, brand label small at top, headline big, one-line tagline
+  underneath. No imagery beyond a soft cone-of-uncertainty silhouette
+  in the lower-right corner — alludes to the cone map without
+  competing with the typography.
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 1200 630"
+     width="1200" height="630">
+
+  <!-- Solid dark slate background. Hex matches Tailwind slate-900 so
+       the share card visually pairs with the dashboard chrome. -->
+  <rect width="1200" height="630" fill="#0f172a"/>
+
+  <!-- Faint cone-of-uncertainty echo, lower-right.
+       Geometry: rotated triangular wedge that opens up and to the right.
+       Stroke amber-300 (0xfcd34d) at low opacity so it reads as
+       atmospheric texture rather than a chart. -->
+  <g opacity="0.08" stroke="#fcd34d" stroke-width="2" fill="none"
+     transform="translate(900, 460) rotate(-25)">
+    <path d="M 0 0 L 280 -50 L 320 -10 L 320 10 L 280 50 Z"/>
+    <path d="M 60 -20 L 250 -50 L 280 -25"/>
+    <path d="M 60 20 L 250 50 L 280 25"/>
+    <path d="M 110 -25 L 220 -45"/>
+    <path d="M 110 25 L 220 45"/>
+  </g>
+
+  <!-- Brand row — small caps, wide tracking. Matches the in-page
+       "Risk Market News" label in tone. -->
+  <text x="80" y="140"
+        font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+        font-size="24"
+        font-weight="500"
+        letter-spacing="6"
+        fill="#94a3b8">RISK MARKET NEWS</text>
+
+  <!-- Headline. Large, weighted, the visual anchor of the card. -->
+  <text x="80" y="280"
+        font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+        font-size="84"
+        font-weight="700"
+        fill="#f8fafc">Hurricane Dashboard</text>
+
+  <!-- Tagline. The dashboard's mission statement, condensed. -->
+  <text x="80" y="380"
+        font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+        font-size="32"
+        font-weight="400"
+        fill="#cbd5e1">How hurricane risk is being priced, today.</text>
+  <text x="80" y="420"
+        font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+        font-size="28"
+        font-weight="400"
+        fill="#94a3b8">Translated for people who don't speak insurance.</text>
+
+  <!-- Footer URL — gives the card a clear destination. -->
+  <text x="80" y="560"
+        font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+        font-size="22"
+        font-weight="400"
+        fill="#64748b">riskmarketnews.com</text>
+</svg>
