@@ -25,12 +25,29 @@ def test_seed_inserts_storm_observation_and_forecast(db_session: Session) -> Non
     db_session.commit()
 
     storm = db_session.query(Storm).filter_by(nhc_id=NHC_ID).one()
-    obs = db_session.query(StormObservation).filter_by(storm_id=storm.id).one()
+    # Day 18 added a 24h-prior observation so Panel 6's delta logic
+    # produces a real intensification line in dev. The "current"
+    # observation is the most recent (155 kt at the Advisory-36 time).
+    observations = (
+        db_session.query(StormObservation)
+        .filter_by(storm_id=storm.id)
+        .order_by(StormObservation.observation_time.desc())
+        .all()
+    )
+    assert len(observations) == 2
+    obs = observations[0]  # latest
     forecast = db_session.query(Forecast).filter_by(storm_id=storm.id).one()
 
     assert storm.name == "Irma"
     assert storm.status == "active"
     assert obs.classification == "HU"
+    assert obs.intensity_kt == 155
+    # Prior observation should be 24h earlier and weaker — sanity check
+    # so a future edit that breaks the prior-observation seed fails here
+    # rather than only showing up as a Panel 6 visual regression.
+    prior = observations[1]
+    assert prior.intensity_kt < obs.intensity_kt
+    assert (obs.observation_time - prior.observation_time).total_seconds() >= 18 * 3600
     assert forecast.cone_geojson["type"] == "Polygon"
     # _5day_pts shape: GeoJSON Features with Point geometries and DBF
     # props. forecast_map.js reads FLDATELBL / MAXWIND / TCDVLP.
@@ -56,7 +73,10 @@ def test_seed_is_idempotent(db_session: Session) -> None:
 
     assert db_session.query(Storm).filter_by(nhc_id=NHC_ID).count() == 1
     storm = db_session.query(Storm).filter_by(nhc_id=NHC_ID).one()
-    assert db_session.query(StormObservation).filter_by(storm_id=storm.id).count() == 1
+    # 2 observations: latest (Advisory-36) + 24h-prior for the delta
+    # logic. Both upserted on every seed run, so a second pass doesn't
+    # add a third row.
+    assert db_session.query(StormObservation).filter_by(storm_id=storm.id).count() == 2
     assert db_session.query(Forecast).filter_by(storm_id=storm.id).count() == 1
 
 

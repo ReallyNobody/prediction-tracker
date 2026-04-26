@@ -73,6 +73,23 @@ OBSERVATION = {
     "movement_speed_mph": 16,
 }
 
+# Prior observation (24h earlier) so Panel 6's day-over-day delta
+# logic produces a real "intensified +25 kt" line in dev rather than
+# falling back to "newly tracked." Faithful to Irma's actual track:
+# at 15:00Z on 2017-09-06 she was a Cat 4 in the central Atlantic
+# during her famous rapid-intensification phase, ~24 hours before
+# peaking at the 155 kt reading above.
+PRIOR_OBSERVATION_TIME = datetime(2017, 9, 6, 15, 0, tzinfo=UTC)
+PRIOR_OBSERVATION = {
+    "classification": "HU",
+    "intensity_kt": 130,
+    "pressure_mb": 933,
+    "latitude_deg": 18.6,
+    "longitude_deg": -57.7,
+    "movement_dir_deg": 280,
+    "movement_speed_mph": 14,
+}
+
 # 5-day forecast track. Timestamps are NHC's official valid-times for
 # Advisory 36; positions/intensities are faithful to the original
 # product. Each entry becomes one GeoJSON Feature in
@@ -263,6 +280,36 @@ def _upsert_observation(db: Session, storm: Storm) -> StormObservation:
     return obs
 
 
+def _upsert_prior_observation(db: Session, storm: Storm) -> StormObservation:
+    """Insert (or refresh) the 24h-prior observation.
+
+    Panel 6's "What changed today" service compares the latest
+    observation against the most recent observation at least 18h older.
+    Without this prior row, the only observation in the dev DB is the
+    Advisory-36 reading — and the service falls back to "newly tracked"
+    instead of showing a real intensification delta.
+    """
+    existing = db.scalar(
+        select(StormObservation)
+        .where(StormObservation.storm_id == storm.id)
+        .where(StormObservation.observation_time == PRIOR_OBSERVATION_TIME)
+    )
+    if existing is not None:
+        for field, value in PRIOR_OBSERVATION.items():
+            setattr(existing, field, value)
+        db.flush()
+        return existing
+
+    obs = StormObservation(
+        storm_id=storm.id,
+        observation_time=PRIOR_OBSERVATION_TIME,
+        **PRIOR_OBSERVATION,
+    )
+    db.add(obs)
+    db.flush()
+    return obs
+
+
 def _upsert_forecast(db: Session, storm: Storm) -> Forecast:
     existing = db.scalar(
         select(Forecast)
@@ -306,6 +353,7 @@ def seed(db: Session, *, clear: bool = False) -> dict[str, int]:
 
     storm = _upsert_storm(db)
     obs = _upsert_observation(db, storm)
+    _upsert_prior_observation(db, storm)
     forecast = _upsert_forecast(db, storm)
     return {
         "storm_id": storm.id,

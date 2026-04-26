@@ -41,10 +41,11 @@ from rmn_dashboard.data.universe import load_universe
 from rmn_dashboard.models import Storm, StormObservation
 from rmn_dashboard.services.equity_quotes import latest_universe_quotes
 
-# How far back the storm-change query looks. 36h gives us a comfortable
-# window to find a "yesterday" observation even if NHC's scrape cadence
-# is uneven (dropped polls, weekend gaps in the scheduler).
-_STORM_LOOKBACK_HOURS = 36
+# Minimum gap between "latest" and "prior" observations for the storm
+# delta query. The 18h floor (vs. exactly 24h) tolerates slight cadence
+# variance and weekend gaps in NHC polling without losing legitimate
+# yesterday-vs-today comparisons.
+_PRIOR_OBSERVATION_FLOOR_HOURS = 18
 
 # Cap on equity movers shown. Three is the editorially right number —
 # enough to give a sense of the day's mix, few enough to scan.
@@ -91,8 +92,18 @@ def _storm_changes(db: Session, *, now: datetime) -> list[dict[str, Any]]:
     recent observation that's at least 18 hours older. If the prior
     observation is missing (newly tracked storm, or a quiet scrape
     history), the line says "newly tracked" instead of a delta.
+
+    The prior-observation lookup is deliberately NOT anchored to ``now``.
+    What we want is "did this storm change since yesterday relative to
+    its own latest reading," and yesterday-relative-to-latest is the
+    correct comparison whether the storm's data is fresh or whether
+    it's a historical seed (Irma 2017, Ian 2022) loaded for dev. The
+    18h floor between latest and prior is the only timing constraint
+    that matters here.
     """
-    cutoff = now - timedelta(hours=_STORM_LOOKBACK_HOURS)
+    # ``now`` is retained as a function parameter for symmetry with
+    # the rest of the service and to keep tests deterministic.
+    _ = now
 
     active_storm_ids = list(db.scalars(select(Storm.id).where(Storm.status == "active")).all())
     if not active_storm_ids:
@@ -109,15 +120,13 @@ def _storm_changes(db: Session, *, now: datetime) -> list[dict[str, Any]]:
         if latest is None:
             continue
 
-        # "Yesterday" reference: most recent observation at least 18h
-        # before the latest. The 18h floor (vs. exactly 24h) tolerates
-        # slight cadence variance and weekend gaps in NHC polling.
-        prior_threshold = latest.observation_time - timedelta(hours=18)
+        # "Yesterday" reference: most recent observation at least
+        # _PRIOR_OBSERVATION_FLOOR_HOURS before the latest.
+        prior_threshold = latest.observation_time - timedelta(hours=_PRIOR_OBSERVATION_FLOOR_HOURS)
         prior = db.scalar(
             select(StormObservation)
             .where(StormObservation.storm_id == storm_id)
             .where(StormObservation.observation_time <= prior_threshold)
-            .where(StormObservation.observation_time >= cutoff - timedelta(hours=12))
             .order_by(StormObservation.observation_time.desc())
             .limit(1)
         )

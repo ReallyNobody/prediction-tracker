@@ -49,7 +49,9 @@ def test_index_returns_html_with_panel_shells(client: TestClient) -> None:
 def test_index_shows_empty_state_when_no_markets(client: TestClient) -> None:
     """With a fresh DB, the Markets panel renders its empty-state copy."""
     body = client.get("/").text
-    assert "No hurricane markets in the database yet" in body
+    # Day 18 softened this from dev-y "run the Kalshi ingest job" wording
+    # to reader-facing copy. The phrase below is the editorial anchor.
+    assert "No hurricane prediction markets are open right now" in body
 
 
 def test_index_renders_market_rows_when_seeded(client: TestClient, db_session: Session) -> None:
@@ -77,7 +79,7 @@ def test_index_renders_market_rows_when_seeded(client: TestClient, db_session: S
     assert "42¢" in body  # yes_price formatted as cents
     assert "269" in body  # open interest
     # Empty-state copy should be gone now.
-    assert "No hurricane markets in the database yet" not in body
+    assert "No hurricane prediction markets are open right now" not in body
 
 
 def test_index_wires_up_forecast_map(client: TestClient) -> None:

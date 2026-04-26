@@ -33,12 +33,24 @@ def test_seed_inserts_storm_observation_and_forecast(db_session: Session) -> Non
     db_session.commit()
 
     storm = db_session.query(Storm).filter_by(nhc_id=NHC_ID).one()
-    obs = db_session.query(StormObservation).filter_by(storm_id=storm.id).one()
+    # Day 18 added a 24h-prior observation; latest is the most recent.
+    observations = (
+        db_session.query(StormObservation)
+        .filter_by(storm_id=storm.id)
+        .order_by(StormObservation.observation_time.desc())
+        .all()
+    )
+    assert len(observations) == 2
+    obs = observations[0]
     forecast = db_session.query(Forecast).filter_by(storm_id=storm.id).one()
 
     assert storm.name == "Ian"
     assert storm.status == "active"
     assert obs.classification == "HU"
+    assert obs.intensity_kt == 105
+    prior = observations[1]
+    assert prior.intensity_kt < obs.intensity_kt
+    assert (obs.observation_time - prior.observation_time).total_seconds() >= 18 * 3600
     # Cone shape: same contract Panel 1 consumes — bare Polygon, not a
     # Feature or FeatureCollection.
     assert forecast.cone_geojson["type"] == "Polygon"
@@ -107,7 +119,9 @@ def test_seed_is_idempotent(db_session: Session) -> None:
 
     assert db_session.query(Storm).filter_by(nhc_id=NHC_ID).count() == 1
     storm = db_session.query(Storm).filter_by(nhc_id=NHC_ID).one()
-    assert db_session.query(StormObservation).filter_by(storm_id=storm.id).count() == 1
+    # 2 observations: latest + 24h-prior (Day 18). Both upserted on every
+    # seed run, so a second pass doesn't add a third row.
+    assert db_session.query(StormObservation).filter_by(storm_id=storm.id).count() == 2
     assert db_session.query(Forecast).filter_by(storm_id=storm.id).count() == 1
 
 

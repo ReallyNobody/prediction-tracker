@@ -88,7 +88,11 @@
         <p class="mt-3 text-xs text-slate-400">Source: Kalshi · updated on each scrape.</p>
       {% else %}
         <div class="mt-3 text-slate-400">
-          <p class="text-sm">No hurricane markets in the database yet — run the Kalshi ingest job to populate.</p>
+          <p class="text-sm">
+            No hurricane prediction markets are open right now. Markets
+            on Atlantic hurricane counts and individual landfalls
+            typically appear on Kalshi as the season approaches.
+          </p>
         </div>
       {% endif %}
     </aside>
@@ -268,6 +272,11 @@
            class="text-xs text-slate-400"
            data-testid="analogs-framing"></p>
       </div>
+      <p class="mt-1 text-xs text-slate-400 max-w-3xl">
+        Past Atlantic hurricanes that landed in similar places. With an
+        active forecast, the closest landfalls to today's cone come up
+        first; off-season, the most-recent storms.
+      </p>
       <div id="analogs-readout"
            class="mt-3 hidden grid grid-cols-1 md:grid-cols-3 gap-2"
            data-testid="analogs-readout"></div>
@@ -302,11 +311,16 @@
            class="text-xs text-slate-400 font-mono"
            data-testid="changes-as-of"></p>
       </div>
+      <p class="mt-1 text-xs text-slate-400 leading-relaxed">
+        Day-over-day shifts worth noticing — storm intensity changes,
+        biggest equity movers, cat bond proxy. Quiet days collapse
+        to a single line.
+      </p>
       <div id="changes-readout"
            class="mt-3 hidden"
            data-testid="changes-readout"></div>
       <div id="changes-empty" class="mt-3 text-slate-400">
-        <p class="text-sm">Loading today's deltas…</p>
+        <p class="text-sm">Loading today's changes…</p>
       </div>
     </section>
 

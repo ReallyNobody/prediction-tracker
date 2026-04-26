@@ -51,7 +51,7 @@
         // eslint-disable-next-line no-console
         console.error("changes fetch failed", err);
         emptyEl.innerHTML =
-          '<p class="text-sm text-rose-500">Daily delta feed unavailable — try refreshing.</p>';
+          '<p class="text-sm text-rose-500">Today\'s changes feed unavailable — try refreshing.</p>';
         readoutEl.classList.add("hidden");
       });
   });
