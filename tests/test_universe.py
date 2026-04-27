@@ -56,13 +56,13 @@ def test_bundled_universe_loads_cleanly() -> None:
     """
     universe = load_universe()
     assert isinstance(universe, Universe)
-    # Sanity: we expect ~35 tickers in the launch roster, plus 1+ cat
-    # bond ETFs. Don't pin the exact number — that becomes a friction
-    # tax on legitimate edits.
+    # Sanity: we expect ~37 tickers in the launch roster (35 equities +
+    # 1 cat bond ETF + 1 P&C insurance index ETF). Don't pin the exact
+    # number — that becomes a friction tax on legitimate edits.
     assert 20 <= len(universe.tickers) <= 80
-    # All five sectors represented at least once.
+    # All six sectors represented at least once.
     # - insurer/reinsurer/homebuilder/utility drive Panel 2 filter pills.
-    # - cat_bond_etf drives Panel 3 (cat bond market proxy).
+    # - cat_bond_etf and pc_index drive Panel 3 (Hurricane risk capital).
     sectors = {entry.sector for entry in universe.tickers}
     assert sectors == {
         "insurer",
@@ -70,6 +70,7 @@ def test_bundled_universe_loads_cleanly() -> None:
         "homebuilder",
         "utility",
         "cat_bond_etf",
+        "pc_index",
     }
 
 
@@ -96,6 +97,35 @@ def test_bundled_cat_bond_etfs_have_empty_key_states() -> None:
     for entry in filter_by_sector(universe, ["cat_bond_etf"]):
         assert entry.key_states == (), (
             f"cat_bond_etf {entry.ticker} has key_states={entry.key_states}; "
+            "should be empty by editorial convention"
+        )
+
+
+def test_bundled_universe_includes_pc_index_proxy() -> None:
+    """Panel 3 ("Hurricane risk capital") needs at least one pc_index
+    entry as the listed-P&C-insurer counterpart to the cat bond ETF row.
+    Lock it down so a future YAML cleanup that accidentally drops the
+    row doesn't silently blank half of Panel 3 in prod.
+    """
+    universe = load_universe()
+    pc_indexes = filter_by_sector(universe, ["pc_index"])
+    assert pc_indexes, "expected at least one pc_index in the bundled universe"
+    tickers = {entry.ticker for entry in pc_indexes}
+    # KBWP is the launch proxy; if we swap it for a different fund later,
+    # update the test deliberately rather than silently.
+    assert "KBWP" in tickers
+
+
+def test_bundled_pc_indexes_have_empty_key_states() -> None:
+    """Editorial rule: index ETFs hold national-or-broader baskets and
+    don't pin to any single state — empty key_states by convention so
+    they don't light up on a single-state cone overlap (mirrors the
+    cat_bond_etf and reinsurer rules).
+    """
+    universe = load_universe()
+    for entry in filter_by_sector(universe, ["pc_index"]):
+        assert entry.key_states == (), (
+            f"pc_index {entry.ticker} has key_states={entry.key_states}; "
             "should be empty by editorial convention"
         )
 
