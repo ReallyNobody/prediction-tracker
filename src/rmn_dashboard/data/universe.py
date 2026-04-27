@@ -102,10 +102,18 @@ _VALID_US_STATES: frozenset[str] = frozenset(
 # Day 15 added "cat_bond_etf" so a publicly-traded catastrophe-bond ETF
 # can ride the same ingest plumbing as the equity universe. It belongs
 # here (not in a separate YAML) because the data shape and scrape path
-# are identical — the only difference is which panel reads it. Panel 2
-# filters cat_bond_etf out of its equity grid; Panel 3 selects only
-# cat_bond_etf entries.
-Sector = Literal["insurer", "reinsurer", "homebuilder", "utility", "cat_bond_etf"]
+# are identical — the only difference is which panel reads it.
+#
+# Day 20 added "pc_index" — KBW P&C Insurance ETF (KBWP). Same logic as
+# cat_bond_etf: a publicly-traded index proxy, ingested through the
+# yfinance plumbing, but editorially distinct from per-name equities.
+# Panel 2 filters BOTH cat_bond_etf and pc_index out of its equity grid;
+# Panel 3 ("Hurricane risk capital") selects both as two rows of the
+# same readout. There's no clean US-listed reinsurance index ETF — KBW
+# publishes a Global Reinsurance Index but its investable trackers are
+# foreign-listed and thin — so reinsurance stays as the individual
+# tickers in the equity universe (RNR, EG, ACGL, AXS, MKL, HG).
+Sector = Literal["insurer", "reinsurer", "homebuilder", "utility", "cat_bond_etf", "pc_index"]
 Relevance = Literal["high", "medium", "low"]
 
 

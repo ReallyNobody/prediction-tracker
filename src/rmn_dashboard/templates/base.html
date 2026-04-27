@@ -8,6 +8,44 @@
       name="description"
       content="How hurricane risk is being priced, today, by the people who have to pay for it — translated for people who don't speak insurance."
     />
+    <!--
+      Editorial / sharing metadata.
+
+      og:image is an SVG today; most platforms (LinkedIn, Slack,
+      iMessage, Discord, Facebook) render it cleanly. Twitter still
+      requires a raster image for its summary_large_image card, so
+      pre-launch TODO is to convert /static/og-image.svg to a 1200×630
+      PNG and reference it alongside (or in place of) the SVG. The
+      text fields below cover the no-image fallback every platform
+      supports.
+    -->
+    <meta name="author" content="Risk Market News" />
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://riskmarketnews.com/" />
+
+    <!-- Open Graph (Facebook, LinkedIn, Slack, iMessage, Discord) -->
+    <meta property="og:site_name" content="Risk Market News" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="RMN Hurricane Dashboard" />
+    <meta
+      property="og:description"
+      content="How hurricane risk is being priced, today, by the people who have to pay for it — translated for people who don't speak insurance."
+    />
+    <meta property="og:url" content="https://riskmarketnews.com/" />
+    <meta property="og:image" content="https://riskmarketnews.com{{ url_for('static', path='/og-image.svg') }}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="RMN Hurricane Dashboard — hurricane risk pricing, translated." />
+
+    <!-- Twitter card. Falls back to summary (no image) on SVG; pre-launch
+         we'll add a PNG variant and switch to summary_large_image. -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="RMN Hurricane Dashboard" />
+    <meta
+      name="twitter:description"
+      content="How hurricane risk is being priced, today. Real-time forecasts, equities, prediction markets — translated."
+    />
 
     <!-- Tailwind via CDN (MVP only — compile step lands in Phase 2) -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -42,14 +80,29 @@
     <style>
       /* Minor readability tweaks on top of Tailwind's defaults */
       html { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-      .panel-shell { min-height: 14rem; }
-      /* Leaflet needs an explicit height on its container; Tailwind's
-         h-96 (24rem = 384px) matches the cone-map aspect ratio we want
-         on the 2-col panel. The landfall (WSP) map is a full-width row
-         and gets slightly more vertical room so basin-wide probability
-         contours stay readable. */
-      #forecast-map { height: 24rem; }
-      #landfall-map { height: 28rem; }
+
+      /* Panel min-height on desktop keeps the 6-panel grid visually
+         even — without it, a sparse Cat-bond panel would float above
+         a packed equity grid in the same row. On phone the panels
+         stack one-per-row, so the floor would force unnecessary
+         empty space. Apply the floor only at sm+ widths. */
+      @media (min-width: 640px) {
+        .panel-shell { min-height: 14rem; }
+      }
+
+      /* Leaflet needs an explicit height on its container. The cone
+         map gets 24rem on desktop (matches the 2-col panel ratio) and
+         shrinks to 18rem on phone where map controls would otherwise
+         dominate the viewport. The WSP probability map is a full-
+         width row and gets slightly more vertical room on desktop
+         so basin-wide contours stay readable; on phone it shrinks
+         in step with the cone map for the same reason. */
+      #forecast-map { height: 18rem; }
+      #landfall-map { height: 22rem; }
+      @media (min-width: 768px) {
+        #forecast-map { height: 24rem; }
+        #landfall-map { height: 28rem; }
+      }
     </style>
   </head>
   <body class="bg-slate-50 text-slate-900 antialiased">

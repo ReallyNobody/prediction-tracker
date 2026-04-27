@@ -33,13 +33,15 @@ def test_index_returns_html_with_panel_shells(client: TestClient) -> None:
 
     # Each panel heading is present. Day 14 renamed Carrier Exposure →
     # Companies on the line; Day 15 renamed Cat Bond Spreads → Cat bond
-    # market when we pivoted from gated index data to a public ETF proxy.
+    # market when we pivoted from gated index data to a public ETF proxy;
+    # Day 20 renamed Cat bond market → Hurricane risk capital when we
+    # added KBWP (P&C insurance index ETF) as a second row alongside ILS.
     for heading in (
         "Active storms",
         "Markets on it",
         "Landfall probability",
         "Companies on the line",
-        "Cat bond market",
+        "Hurricane risk capital",
         "Historical analogs",
         "What changed today",
     ):
@@ -49,7 +51,9 @@ def test_index_returns_html_with_panel_shells(client: TestClient) -> None:
 def test_index_shows_empty_state_when_no_markets(client: TestClient) -> None:
     """With a fresh DB, the Markets panel renders its empty-state copy."""
     body = client.get("/").text
-    assert "No hurricane markets in the database yet" in body
+    # Day 18 softened this from dev-y "run the Kalshi ingest job" wording
+    # to reader-facing copy. The phrase below is the editorial anchor.
+    assert "No hurricane prediction markets are open right now" in body
 
 
 def test_index_renders_market_rows_when_seeded(client: TestClient, db_session: Session) -> None:
@@ -77,7 +81,7 @@ def test_index_renders_market_rows_when_seeded(client: TestClient, db_session: S
     assert "42¢" in body  # yes_price formatted as cents
     assert "269" in body  # open interest
     # Empty-state copy should be gone now.
-    assert "No hurricane markets in the database yet" not in body
+    assert "No hurricane prediction markets are open right now" not in body
 
 
 def test_index_wires_up_forecast_map(client: TestClient) -> None:
@@ -130,20 +134,79 @@ def test_index_wires_up_equities_panel(client: TestClient) -> None:
     assert "/static/js/panel_equities.js" in body
 
 
-def test_index_wires_up_cat_bonds_panel(client: TestClient) -> None:
-    """Panel 3 (Cat bond market) ships its readout container, empty
-    state, as-of label, and the loader script.
+def test_index_wires_up_analogs_panel(client: TestClient) -> None:
+    """Panel 5 (Historical analogs) ships its readout container, empty
+    state, framing label, and the loader script.
 
-    Smoke test only — no JS exercised. ``panel_cat_bonds.js`` targets
-    each of these IDs by string and pulls
-    /api/v1/quotes/hurricane-universe?sectors=cat_bond_etf, so losing
-    any of them silently breaks the panel.
+    Smoke test only — no JS exercised. ``panel_analogs.js`` targets
+    each of these IDs by string and pulls /api/v1/analogs.
     """
     body = client.get("/").text
-    assert 'id="cat-bonds-readout"' in body
-    assert 'id="cat-bonds-empty"' in body
-    assert 'id="cat-bonds-as-of"' in body
-    assert "/static/js/panel_cat_bonds.js" in body
+    assert 'id="analogs-readout"' in body
+    assert 'id="analogs-empty"' in body
+    assert 'id="analogs-framing"' in body
+    assert "/static/js/panel_analogs.js" in body
+
+
+def test_analogs_endpoint_returns_offseason_payload(client: TestClient) -> None:
+    """``/api/v1/analogs`` on a fresh DB (no active storms) responds
+    in offseason mode with non-empty analogs.
+    """
+    response = client.get("/api/v1/analogs")
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body.keys()) == {"mode", "framing", "analogs"}
+    assert body["mode"] == "offseason"
+    assert isinstance(body["analogs"], list)
+    assert len(body["analogs"]) >= 1
+
+
+def test_index_wires_up_changes_panel(client: TestClient) -> None:
+    """Panel 6 (What changed today) ships its readout container, empty
+    state, as-of label, and the loader script.
+
+    Smoke test only — no JS exercised. ``panel_changes.js`` targets
+    each of these IDs by string and pulls /api/v1/changes/today.
+    """
+    body = client.get("/").text
+    assert 'id="changes-readout"' in body
+    assert 'id="changes-empty"' in body
+    assert 'id="changes-as-of"' in body
+    assert "/static/js/panel_changes.js" in body
+
+
+def test_changes_endpoint_returns_expected_shape(client: TestClient) -> None:
+    """``/api/v1/changes/today`` responds with the four-key payload
+    shape ``panel_changes.js`` reads. Fresh DB → empty lists / null.
+    """
+    response = client.get("/api/v1/changes/today")
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body.keys()) == {"as_of", "storms", "equities", "cat_bond"}
+    assert body["storms"] == []
+    assert body["equities"] == []
+    assert body["cat_bond"] is None
+
+
+def test_index_wires_up_risk_capital_panel(client: TestClient) -> None:
+    """Panel 3 (Hurricane risk capital) ships its readout container,
+    empty state, as-of label, and the loader script.
+
+    Smoke test only — no JS exercised. ``panel_risk_capital.js`` targets
+    each of these IDs by string and pulls
+    /api/v1/quotes/hurricane-universe?sectors=cat_bond_etf,pc_index, so
+    losing any of them silently breaks the panel.
+
+    Day 20 rename: this test was previously
+    ``test_index_wires_up_cat_bonds_panel`` against IDs ``cat-bonds-*``
+    when the panel was a single-row cat bond ETF readout. Adding KBWP
+    as a second row reframed the panel and the IDs went with it.
+    """
+    body = client.get("/").text
+    assert 'id="risk-capital-readout"' in body
+    assert 'id="risk-capital-empty"' in body
+    assert 'id="risk-capital-as-of"' in body
+    assert "/static/js/panel_risk_capital.js" in body
 
 
 def test_index_wires_up_landfall_map(client: TestClient) -> None:
@@ -175,3 +238,45 @@ def test_healthz(client: TestClient) -> None:
     response = client.get("/healthz")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_index_ships_share_card_meta(client: TestClient) -> None:
+    """The index page advertises Open Graph + Twitter card metadata
+    so links preview cleanly when shared on social / chat platforms.
+
+    Smoke test only — we assert the tags are present, not that any
+    specific platform's renderer accepts them. A full preview check
+    is a manual pre-launch step (Twitter Card Validator / Facebook
+    Sharing Debugger).
+    """
+    body = client.get("/").text
+
+    # Author + theme + canonical — small but visible to crawlers and
+    # mobile browsers (theme-color tints the URL bar on Android).
+    assert 'name="author"' in body
+    assert 'name="theme-color"' in body
+    assert 'rel="canonical"' in body
+
+    # Open Graph: title, description, url, image, site_name, type are
+    # the minimum viable card. og:image dimensions are required by
+    # several crawlers to decide whether to render the large variant.
+    for meta in (
+        'property="og:title"',
+        'property="og:description"',
+        'property="og:url"',
+        'property="og:image"',
+        'property="og:image:width"',
+        'property="og:image:height"',
+        'property="og:site_name"',
+        'property="og:type"',
+    ):
+        assert meta in body, f"missing OG tag: {meta}"
+
+    # Twitter card. summary today (SVG og:image); summary_large_image
+    # post-PNG-conversion.
+    assert 'name="twitter:card"' in body
+    assert 'name="twitter:title"' in body
+    assert 'name="twitter:description"' in body
+
+    # The OG image is served from /static/, not embedded inline.
+    assert "og-image.svg" in body

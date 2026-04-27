@@ -96,6 +96,11 @@ def _mock_quote_for(entry: UniverseEntry) -> dict[str, float | int | None]:
         # cat bond fund NAVs cluster there. Use a tighter dev-seed
         # range so the panel renders a plausible number off-season.
         "cat_bond_etf": 22.0,
+        # KBWP (P&C insurance index ETF) has historically traded in the
+        # $80-100 band; pick a base that lets the multiplier spread
+        # straddle that range. Day 20 added pc_index alongside cat bond
+        # ETFs in Panel 3 ("Hurricane risk capital").
+        "pc_index": 90.0,
     }[entry.sector]
 
     # Spread the price 0.5x-1.8x the sector base, deterministic per ticker.
