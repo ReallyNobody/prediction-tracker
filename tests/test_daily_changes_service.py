@@ -63,10 +63,16 @@ def _add_storm(
     nhc_id: str,
     name: str,
     status: str = "active",
+    season_year: int = 2026,
 ) -> Storm:
+    # season_year is NOT NULL on the Storm model — every test below uses
+    # an NHC id ending in 2026 (AL012026, AL022026, ...), so the default
+    # matches the rest of the fixture data. Override only if a future
+    # test deliberately seeds a multi-season scenario.
     storm = Storm(
         nhc_id=nhc_id,
         name=name,
+        season_year=season_year,
         storm_type="Hurricane",
         max_wind_kt=80,
         min_pressure_mb=970,
