@@ -33,13 +33,15 @@ def test_index_returns_html_with_panel_shells(client: TestClient) -> None:
 
     # Each panel heading is present. Day 14 renamed Carrier Exposure →
     # Companies on the line; Day 15 renamed Cat Bond Spreads → Cat bond
-    # market when we pivoted from gated index data to a public ETF proxy.
+    # market when we pivoted from gated index data to a public ETF proxy;
+    # Day 20 renamed Cat bond market → Hurricane risk capital when we
+    # added KBWP (P&C insurance index ETF) as a second row alongside ILS.
     for heading in (
         "Active storms",
         "Markets on it",
         "Landfall probability",
         "Companies on the line",
-        "Cat bond market",
+        "Hurricane risk capital",
         "Historical analogs",
         "What changed today",
     ):
@@ -186,20 +188,25 @@ def test_changes_endpoint_returns_expected_shape(client: TestClient) -> None:
     assert body["cat_bond"] is None
 
 
-def test_index_wires_up_cat_bonds_panel(client: TestClient) -> None:
-    """Panel 3 (Cat bond market) ships its readout container, empty
-    state, as-of label, and the loader script.
+def test_index_wires_up_risk_capital_panel(client: TestClient) -> None:
+    """Panel 3 (Hurricane risk capital) ships its readout container,
+    empty state, as-of label, and the loader script.
 
-    Smoke test only — no JS exercised. ``panel_cat_bonds.js`` targets
+    Smoke test only — no JS exercised. ``panel_risk_capital.js`` targets
     each of these IDs by string and pulls
-    /api/v1/quotes/hurricane-universe?sectors=cat_bond_etf, so losing
-    any of them silently breaks the panel.
+    /api/v1/quotes/hurricane-universe?sectors=cat_bond_etf,pc_index, so
+    losing any of them silently breaks the panel.
+
+    Day 20 rename: this test was previously
+    ``test_index_wires_up_cat_bonds_panel`` against IDs ``cat-bonds-*``
+    when the panel was a single-row cat bond ETF readout. Adding KBWP
+    as a second row reframed the panel and the IDs went with it.
     """
     body = client.get("/").text
-    assert 'id="cat-bonds-readout"' in body
-    assert 'id="cat-bonds-empty"' in body
-    assert 'id="cat-bonds-as-of"' in body
-    assert "/static/js/panel_cat_bonds.js" in body
+    assert 'id="risk-capital-readout"' in body
+    assert 'id="risk-capital-empty"' in body
+    assert 'id="risk-capital-as-of"' in body
+    assert "/static/js/panel_risk_capital.js" in body
 
 
 def test_index_wires_up_landfall_map(client: TestClient) -> None:

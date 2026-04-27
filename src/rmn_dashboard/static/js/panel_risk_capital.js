@@ -1,51 +1,58 @@
 /**
- * Panel 3 — "Cat bond market" loader.
+ * Panel 3 — "Hurricane risk capital" loader.
  *
- * Reads from the same /api/v1/quotes/hurricane-universe endpoint as
- * Panel 2, filtered to sectors=cat_bond_etf. Renders one prominent
- * card per cat bond ETF (today: just ILS) with last price + change %.
+ * Renamed Day 20 from panel_cat_bonds.js. Original panel was a single
+ * row (ILS, the cat bond ETF). The reframe adds a second row for KBWP
+ * (KBW P&C Insurance ETF), giving the panel two views of how hurricane-
+ * risk capital is being priced — alternative capital (cat bonds) and
+ * listed P&C insurers.
  *
- * Why this panel exists:
+ * Reads from the same /api/v1/quotes/hurricane-universe endpoint Panel
+ * 2 uses, filtered to sectors=cat_bond_etf,pc_index. Each ticker
+ * renders as a single card with its symbol, name, last price, and
+ * day's change. Notes flow as supporting copy underneath each card,
+ * which is how the panel explains what each proxy actually represents
+ * without burying it in the panel header copy.
  *
- *   The institutional cat bond spread benchmarks — Plenum UCITS Cat
- *   Bond Fund Index, Swiss Re's Cat Bond Total Return Index — are all
- *   gated behind paid subscriptions (Bloomberg / Artemis). A
- *   publicly-traded cat bond ETF is the closest free, real-time proxy:
- *   its NAV moves as the underlying cat bond market reprices. Less
- *   precise than the institutional index, but free and journalism-
- *   appropriate.
+ * Why no reinsurance row:
  *
- * No fancy charting library — a single-tile readout with the price,
- *   colored change, and a tooltip is the whole UI today. If/when we
- *   want a sparkline we can add inline-SVG; the panel is small enough
- *   that we don't need a JS chart library.
+ *   KBW publishes a Global Reinsurance Index, but the publicly
+ *   investable products that track it are foreign-listed and thinly
+ *   traded — not appropriate as a journalism-grade real-time read.
+ *   The individual reinsurer tickers (RNR / EG / ACGL / AXS / MKL /
+ *   HG) in Panel 2's reinsurer filter pill cover that layer at
+ *   per-name resolution instead.
+ *
+ * No fancy charting — two stacked cards is the whole UI today. If/when
+ * we want a sparkline we can add inline-SVG; the panel is small enough
+ * that we don't need a JS chart library.
  */
 
 (function () {
   "use strict";
 
   document.addEventListener("DOMContentLoaded", function () {
-    const readoutEl = document.getElementById("cat-bonds-readout");
-    const emptyEl = document.getElementById("cat-bonds-empty");
-    const asOfEl = document.getElementById("cat-bonds-as-of");
+    const readoutEl = document.getElementById("risk-capital-readout");
+    const emptyEl = document.getElementById("risk-capital-empty");
+    const asOfEl = document.getElementById("risk-capital-as-of");
 
     if (!readoutEl || !emptyEl) {
       return;
     }
 
-    fetch("/api/v1/quotes/hurricane-universe?sectors=cat_bond_etf", {
+    fetch("/api/v1/quotes/hurricane-universe?sectors=cat_bond_etf,pc_index", {
       headers: { Accept: "application/json" },
     })
       .then(function (r) {
         if (!r.ok) {
-          throw new Error("cat-bonds-feed " + r.status);
+          throw new Error("risk-capital-feed " + r.status);
         }
         return r.json();
       })
       .then(function (payload) {
         const tickers = (payload && payload.tickers) || [];
         if (tickers.length === 0) {
-          showEmpty(emptyEl, readoutEl, "No cat bond proxies in the universe yet.");
+          showEmpty(emptyEl, readoutEl, "No risk-capital proxies in the universe yet.");
           return;
         }
         renderReadout(readoutEl, emptyEl, tickers);
@@ -53,9 +60,9 @@
       })
       .catch(function (err) {
         // eslint-disable-next-line no-console
-        console.error("cat-bonds fetch failed", err);
+        console.error("risk-capital fetch failed", err);
         emptyEl.innerHTML =
-          '<p class="text-sm text-rose-500">Cat bond feed unavailable — try refreshing.</p>';
+          '<p class="text-sm text-rose-500">Risk-capital feed unavailable — try refreshing.</p>';
         readoutEl.classList.add("hidden");
       });
   });
@@ -63,7 +70,13 @@
   // --- Rendering --------------------------------------------------------
 
   function renderReadout(readoutEl, emptyEl, tickers) {
-    readoutEl.innerHTML = tickers.map(buildCard).join("");
+    // Universe order is cat_bond_etf first, pc_index second — exactly
+    // what we want top-down. Don't re-sort: respecting universe order
+    // keeps editorial control in the YAML rather than the JS.
+    readoutEl.innerHTML =
+      '<div class="space-y-2">' +
+      tickers.map(buildCard).join("") +
+      "</div>";
     readoutEl.classList.remove("hidden");
     emptyEl.classList.add("hidden");
   }
@@ -85,12 +98,16 @@
     const changeText = changePct == null
       ? ""
       : (changePct >= 0 ? "+" : "") + Number(changePct).toFixed(2) + "%";
+    const sectorLabel = sectorLabelHtml(entry.sector);
 
-    // Single prominent card — symbol + name on the left, price + change
-    // on the right. Notes flow as supporting copy underneath.
+    // Single card — symbol + name on the left, price + change on the
+    // right. Sector label sits as a small uppercase tag under the name
+    // so a glance distinguishes the cat bond row from the P&C row
+    // without needing a section heading above each card.
     return (
       '<div class="rounded border border-slate-200 bg-white p-3"' +
       ' data-ticker="' + escapeHtml(entry.ticker) + '"' +
+      ' data-sector="' + escapeHtml(entry.sector) + '"' +
       ' title="' + escapeHtml(entry.name) + '">' +
         '<div class="flex items-baseline justify-between gap-3 flex-wrap">' +
           '<div>' +
@@ -98,6 +115,7 @@
               escapeHtml(entry.ticker) + "</div>" +
             '<div class="text-xs text-slate-500">' +
               escapeHtml(entry.name) + "</div>" +
+            sectorLabel +
           "</div>" +
           '<div class="text-right">' +
             '<div class="font-mono text-base text-slate-900">' + lastPrice + "</div>" +
@@ -110,6 +128,22 @@
               escapeHtml(entry.notes) +
             "</p>"
           : "") +
+      "</div>"
+    );
+  }
+
+  function sectorLabelHtml(sector) {
+    // Editorial labels for the two index sectors — the YAML's literal
+    // sector strings ("cat_bond_etf", "pc_index") are dev-facing, not
+    // reader-facing. Keep this map narrow: only the sectors Panel 3
+    // actually renders need a label.
+    const label = {
+      cat_bond_etf: "Cat bond proxy",
+      pc_index: "P&C insurers index",
+    }[sector] || sector;
+    return (
+      '<div class="mt-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">' +
+        escapeHtml(label) +
       "</div>"
     );
   }

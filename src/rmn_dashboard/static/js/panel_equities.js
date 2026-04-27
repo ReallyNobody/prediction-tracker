@@ -42,9 +42,10 @@
     // return zero storms; that's a non-event for Panel 2 — we just
     // skip the highlight in that case.
     //
-    // The sectors filter excludes cat_bond_etf — those entries belong
-    // in Panel 3 ("Cat bond market"), and the equity grid would feel
-    // inconsistent if a fund tile sat among individual-company tiles.
+    // The sectors filter excludes cat_bond_etf and pc_index — those
+    // entries belong in Panel 3 ("Hurricane risk capital"), and the
+    // per-name equity grid would feel inconsistent if a fund tile sat
+    // among individual-company tiles.
     const quotesPromise = fetch(
       "/api/v1/quotes/hurricane-universe?sectors=insurer,reinsurer,homebuilder,utility",
       { headers: { Accept: "application/json" } },

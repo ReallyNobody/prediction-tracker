@@ -37,11 +37,13 @@
 #                          badge.
 #   notes                  One-line tooltip copy.
 #
-# Tickers in this revision: 35
+# Tickers in this revision: 37
 #   - 11 insurers (3 FL-specialist + 8 national/commercial)
 #   -  6 reinsurers
 #   -  8 homebuilders
 #   - 10 utilities
+#   -  1 cat bond ETF (Panel 3)
+#   -  1 P&C insurance index ETF (Panel 3)
 # =====================================================================
 
 version: 1
@@ -339,14 +341,16 @@ tickers:
 
   # --- Cat bond ETFs --------------------------------------------------
   #
-  # Panel 3 ("Cat bond market") reads from this section. Tickers here
-  # are publicly-traded ETFs holding catastrophe bonds — a public-data
-  # proxy for the institutional Plenum / Swiss Re indices that are
-  # gated behind Bloomberg / Artemis subscriptions.
+  # Panel 3 ("Hurricane risk capital") reads cat_bond_etf rows from this
+  # section, alongside the pc_index row below. Tickers here are
+  # publicly-traded ETFs holding catastrophe bonds — a public-data
+  # proxy for the institutional Plenum / Swiss Re cat bond indices that
+  # are gated behind Bloomberg / Artemis subscriptions.
   #
   # Editorial rule: empty key_states (cat bond books are global, same
   # convention as reinsurers). Panel 2 filters cat_bond_etf out of the
-  # equity grid; Panel 3 selects only this sector.
+  # per-name equity grid; Panel 3 selects both cat_bond_etf and
+  # pc_index as two rows of the same readout.
 
   - ticker: ILS
     name: Insurance-Linked Securities ETF
@@ -355,3 +359,30 @@ tickers:
     key_states: []
     hurricane_relevance: high
     notes: NYSE Arca-listed cat bond ETF; price moves with cat bond market repricing.
+
+  # --- P&C insurance index ETF ----------------------------------------
+  #
+  # Day 20: KBWP ships alongside ILS in Panel 3 to give a second view of
+  # how hurricane-risk capital is priced. Where ILS represents the
+  # alternative-capital (cat bond) layer, KBWP tracks the listed P&C
+  # insurance layer — the two combined give a tighter read on whether
+  # a season's pricing is moving on the bond side, the equity side, or
+  # both.
+  #
+  # No reinsurance counterpart yet: KBW publishes a Global Reinsurance
+  # Index, but its investable trackers are foreign-listed and thin.
+  # Individual reinsurer tickers (RNR / EG / ACGL / AXS / MKL / HG) in
+  # the equity universe cover that layer through Panel 2's reinsurer
+  # filter pill.
+  #
+  # Editorial rule: empty key_states (it's a basket, not a single-state
+  # bet). Panel 2 filters pc_index out of its equity grid alongside
+  # cat_bond_etf so the per-name tiles aren't diluted by index rows.
+
+  - ticker: KBWP
+    name: Invesco KBW Property & Casualty Insurance ETF
+    sector: pc_index
+    cik: null
+    key_states: []
+    hurricane_relevance: high
+    notes: Tracks the KBW Nasdaq P&C Insurance Index — listed P&C carriers, hurricane-exposed.

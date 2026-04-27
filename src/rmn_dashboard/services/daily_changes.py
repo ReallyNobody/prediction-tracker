@@ -185,6 +185,13 @@ def _equity_movers(
     homebuilder / utility) — cat_bond_etf is reported separately by
     ``_cat_bond_change`` so the cat bond signal doesn't get drowned
     under a noisy single-name move.
+
+    pc_index (KBWP, added Day 20) is also deliberately excluded here.
+    Panel 3 already surfaces its day's change as one of the two
+    risk-capital rows; narrating it again in Panel 6 would double-
+    count what's effectively the same headline. If KBWP starts moving
+    big enough on a given day to deserve its own line in the changes
+    rollup, revisit and add a parallel ``_pc_index_change`` helper.
     """
     if sectors is None:
         sectors = ["insurer", "reinsurer", "homebuilder", "utility"]
