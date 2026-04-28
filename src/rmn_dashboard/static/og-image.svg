@@ -2,11 +2,15 @@
 <!--
   Open Graph share image — 1200×630, the canonical OG card size.
 
-  Rendered as SVG for crispness at any zoom level. NOTE: Twitter (per
-  its current docs) does not render SVG OG images and falls back to
-  the text-only card. Facebook, LinkedIn, Slack, iMessage, and Discord
-  *do* render SVG. Pre-launch TODO: convert this file to a 1200×630
-  PNG and reference both — most OG-tag-readers prefer PNG.
+  This SVG is the design source. The actual file referenced by the
+  base.html meta tags is og-image.png, rendered from this SVG by
+  scripts/build_og_png.py (Day 22). Twitter requires raster for its
+  summary_large_image card and PNG is the universal denominator
+  across crawlers, so we ship PNG primary; this SVG stays in /static/
+  as the editable source asset and a sharper-on-zoom backup.
+
+  When this file is edited, re-run scripts/build_og_png.py and commit
+  the regenerated PNG alongside the SVG change.
 
   Styling stays minimal so the editorial voice does the work: dark
   slate background to match the rest of the dashboard's restrained

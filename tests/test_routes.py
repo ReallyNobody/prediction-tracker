@@ -260,11 +260,14 @@ def test_index_ships_share_card_meta(client: TestClient) -> None:
     # Open Graph: title, description, url, image, site_name, type are
     # the minimum viable card. og:image dimensions are required by
     # several crawlers to decide whether to render the large variant.
+    # Day 22 added og:image:type so crawlers know it's PNG without
+    # sniffing the URL.
     for meta in (
         'property="og:title"',
         'property="og:description"',
         'property="og:url"',
         'property="og:image"',
+        'property="og:image:type"',
         'property="og:image:width"',
         'property="og:image:height"',
         'property="og:site_name"',
@@ -272,11 +275,19 @@ def test_index_ships_share_card_meta(client: TestClient) -> None:
     ):
         assert meta in body, f"missing OG tag: {meta}"
 
-    # Twitter card. summary today (SVG og:image); summary_large_image
-    # post-PNG-conversion.
-    assert 'name="twitter:card"' in body
+    # The OG image is served from /static/, not embedded inline. Day 22
+    # switched the canonical reference from og-image.svg to og-image.png
+    # so Twitter's summary_large_image card has a raster source.
+    assert "og-image.png" in body
+
+    # Twitter card. Day 22 switched from `summary` (no image, SVG-era
+    # fallback) to `summary_large_image`, which Twitter renders with
+    # the PNG above as a full-width preview. summary_large_image
+    # requires an explicit twitter:image — assert both.
+    assert 'content="summary_large_image"' in body
     assert 'name="twitter:title"' in body
     assert 'name="twitter:description"' in body
+    assert 'name="twitter:image"' in body
 
     # The OG image is served from /static/, not embedded inline.
     assert "og-image.svg" in body

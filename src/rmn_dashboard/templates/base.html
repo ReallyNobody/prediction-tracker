@@ -11,13 +11,13 @@
     <!--
       Editorial / sharing metadata.
 
-      og:image is an SVG today; most platforms (LinkedIn, Slack,
-      iMessage, Discord, Facebook) render it cleanly. Twitter still
-      requires a raster image for its summary_large_image card, so
-      pre-launch TODO is to convert /static/og-image.svg to a 1200×630
-      PNG and reference it alongside (or in place of) the SVG. The
-      text fields below cover the no-image fallback every platform
-      supports.
+      og:image is the 1200x630 PNG rendered from og-image.svg by
+      scripts/build_og_png.py (Day 22). PNG is the universal
+      denominator: Twitter requires raster for summary_large_image,
+      and Facebook / LinkedIn / Slack / iMessage / Discord all render
+      it cleanly. The SVG stays in /static/ as a secondary asset
+      (sharper at high zoom) but isn't referenced from the meta tags
+      because the safest single canonical card is one format.
     -->
     <meta name="author" content="Risk Market News" />
     <meta name="theme-color" content="#0f172a" />
@@ -33,19 +33,23 @@
       content="How hurricane risk is being priced, today, by the people who have to pay for it — translated for people who don't speak insurance."
     />
     <meta property="og:url" content="https://riskmarketnews.com/" />
-    <meta property="og:image" content="https://riskmarketnews.com{{ url_for('static', path='/og-image.svg') }}" />
+    <meta property="og:image" content="https://riskmarketnews.com{{ url_for('static', path='/og-image.png') }}" />
+    <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="RMN Hurricane Dashboard — hurricane risk pricing, translated." />
 
-    <!-- Twitter card. Falls back to summary (no image) on SVG; pre-launch
-         we'll add a PNG variant and switch to summary_large_image. -->
-    <meta name="twitter:card" content="summary" />
+    <!-- Twitter card. summary_large_image renders the 1200x630 PNG as
+         a full-width preview (the larger of Twitter's two card sizes).
+         twitter:image is required when summary_large_image is set. -->
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="RMN Hurricane Dashboard" />
     <meta
       name="twitter:description"
       content="How hurricane risk is being priced, today. Real-time forecasts, equities, prediction markets — translated."
     />
+    <meta name="twitter:image" content="https://riskmarketnews.com{{ url_for('static', path='/og-image.png') }}" />
+    <meta name="twitter:image:alt" content="RMN Hurricane Dashboard — hurricane risk pricing, translated." />
 
     <!-- Tailwind via CDN (MVP only — compile step lands in Phase 2) -->
     <script src="https://cdn.tailwindcss.com"></script>

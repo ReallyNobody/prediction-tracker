@@ -48,6 +48,11 @@ outputs/
 *.jpg
 *.jpeg
 *.pdf
+# Day 22: og-image.png is a brand asset rendered from the SVG by
+# scripts/build_og_png.py and must ship in the repo so base.html's
+# og:image meta tag points at a real file. The package_data glob in
+# pyproject.toml (`static/**/*`) bundles it for the deployed app.
+!src/rmn_dashboard/static/og-image.png
 cat_loss_data.json
 cat_loss_export.json
 kalshi_weather_markets*.json
