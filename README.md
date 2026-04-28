@@ -53,6 +53,11 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -e '.[dev]'
 
+# Wire ruff into git's pre-commit hook (one-time, per clone). After
+# this, every `git commit` runs ruff format + lint on the staged
+# files; CI keeps running them against the full tree as a safety net.
+pre-commit install
+
 # Copy the example env file and edit as needed
 cp .env.example .env
 
@@ -68,9 +73,14 @@ At this stage the root route returns a JSON stub. Full panel layout lands in Wee
 
 ```bash
 pytest
-ruff check src tests
+ruff check .            # same command CI runs
+ruff format --check .   # format drift check (full tree)
 mypy src
 ```
+
+Pre-commit handles the format/lint pass on staged files automatically;
+the explicit commands above are the on-demand equivalents (e.g. when
+working on a folder pre-commit hasn't seen yet).
 
 ## Data sources
 

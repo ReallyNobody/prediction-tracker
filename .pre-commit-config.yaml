@@ -1,0 +1,53 @@
+# Pre-commit hooks for the RMN Hurricane Dashboard.
+#
+# What this is:
+#   `pre-commit` is a small Python tool that wires hooks into
+#   `.git/hooks/pre-commit`. After running `pre-commit install` once
+#   in a fresh clone, every `git commit` runs the hooks below against
+#   the staged files. ruff-format writes fixes back to the index
+#   before the commit completes; ruff lint blocks the commit if it
+#   had to fix anything (so the developer inspects the change rather
+#   than silently blessing it).
+#
+# Why bother:
+#   We've hit ruff format-check failures in CI several times across
+#   Days 14–20 — almost always because someone (me) ran
+#   `ruff format src/ tests/` instead of `ruff format .` and missed
+#   alembic/ or scripts/. Pre-commit catches the staged files before
+#   they ever leave the laptop.
+#
+# What this is NOT:
+#   A replacement for the CI gate. Pre-commit only sees files that
+#   are staged. Drift in folders nobody is currently editing (the
+#   classic alembic/ scenario) won't be caught locally; the CI step
+#   `ruff format --check .` against the full tree remains the safety
+#   net. Keep both.
+#
+# Version policy:
+#   Pin `rev:` to a specific ruff release that matches the version
+#   pip resolves under the `[dev]` extras in pyproject.toml
+#   (`ruff>=0.3`). When ruff ships a release that changes formatting
+#   decisions, bump pyproject.toml and this file in the same commit
+#   so local hooks and CI agree on output.
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.11
+    hooks:
+      # Lint with auto-fix. --exit-non-zero-on-fix makes the commit
+      # FAIL if the hook had to fix something. That's intentional:
+      # the developer should re-stage and re-commit deliberately,
+      # rather than have fixes silently roll into the commit.
+      #
+      # `ruff-check` is the canonical hook id; the older `ruff` id
+      # still works as an alias on this version of ruff-pre-commit
+      # but pre-commit prints a "(legacy alias)" warning, so we use
+      # the new name.
+      - id: ruff-check
+        args: [--fix, --exit-non-zero-on-fix]
+
+      # Format pass. No extra flags — same defaults CI runs in check
+      # mode. Writes fixes to the staged files; the commit proceeds
+      # if everything was already formatted, fails (with the diff in
+      # the working tree) if it had to reformat anything.
+      - id: ruff-format
