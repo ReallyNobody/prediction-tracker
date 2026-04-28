@@ -67,11 +67,7 @@ dev = [
     "ruff>=0.3",
     "mypy>=1.9",
     "types-beautifulsoup4",
-    # Day 21: pre-commit framework so `.pre-commit-config.yaml` wires
-    # ruff into git's pre-commit hook on a fresh clone. Run
-    # `pre-commit install` once after `pip install -e '.[dev]'` and
-    # subsequent commits format/lint staged files automatically.
-    "pre-commit>=3.6",
+    "pre-commit>=3.6",      # Day 21 — runs .pre-commit-config.yaml hooks; see README
 ]
 prod = [
     "psycopg[binary]>=3.1",
