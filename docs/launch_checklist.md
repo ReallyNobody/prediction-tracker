@@ -402,6 +402,186 @@ marketing channel the dashboard will have during its first season.
 
 ---
 
+## Webinar — Risky Science Live, Wednesday June 11 2026, 2pm
+
+The Risky Science Podcast Live session is a major amplification moment
+for the dashboard. June 11 is 10 days into the 2026 hurricane season
+and ~10 days after launch — long enough that the dashboard has real
+ingest history, short enough that registrants are seeing a fresh
+product. Both confirmed panelists map cleanly onto specific panels,
+which is the point: we're not running a webinar *about* the dashboard,
+we're running a substantive cat-risk discussion in which the dashboard
+happens to be the live operating instrument.
+
+### Confirmed panelists and panel mapping
+
+- **Vijay Manghnani — CIO/CUO, King Ridge Capital.** ILS / reinsurance
+  practitioner. His firm prices the instruments **Panel 3 ("Hurricane
+  risk capital")** proxies via ILS and KBWP — he can validate or
+  challenge whether the public ETFs track institutional reality.
+  Secondary fit: **Panel 5 ("Historical analogs")** as a
+  "this-reminds-me-of" device for any active or recent storm.
+- **Patrick Brown — Interactive Brokers.** Broker/dealer perspective
+  on flow and exposure. Maps onto **Panel 2 ("Companies on the line")**
+  for hurricane-exposed equities and **Panel 4 ("Markets on it")** for
+  the Kalshi prediction-market sentiment thermometer.
+- **Visual anchor for any segment**: **Panel 1** (cone map) and
+  **Panel 6** ("What changed today"). Panel 1 if there's an active
+  storm in the basin on June 11 (early-June first-storm activity is
+  uncommon but not rare — 2024's Beryl reached major status by
+  late June, and a small percentage of seasons see a named system
+  in week 2); Panel 6 otherwise as the running-commentary engine.
+
+### Session description (revised)
+
+The original draft has three issues: (1) it calls June 11 "the official
+start" of the season when June 1 is the start; (2) panelists are
+unnamed ("finance, modeling, and research professionals"); (3) no
+mention of the dashboard. Revised text — drop into the registration
+page in place of the original:
+
+> Despite forecasts calling for moderate hurricane activity, the past
+> several years have proven that fewer but more intense storms are
+> driving growing insured and economic losses.
+>
+> Just over a week into the 2026 North Atlantic hurricane season,
+> **Vijay Manghnani** (CIO/CUO, King Ridge Capital) and **Patrick
+> Brown** (Interactive Brokers) join Risky Science Live for a working
+> discussion on what the models are saying, where the markets are
+> pricing risk, and what the science tells us about storm behavior in
+> a changing climate.
+>
+> We'll work directly from the new **RMN Hurricane Dashboard**
+> ([riskmarketnews.com](https://riskmarketnews.com)) — live cat bond
+> and listed-insurer pricing, real-time NHC forecasts and landfall
+> probabilities, and a curated universe of hurricane-exposed equities
+> — to ground the conversation in what's actually happening on the
+> day.
+>
+> Topics: rapid intensification and compound storm events; ILS and
+> reinsurance pricing signals; the gap between institutional cat-bond
+> indices and the public proxies that move with them; and how a
+> hurricane-season trader reads the tape when a system enters the
+> basin.
+
+Add ~30-word bios per panelist if the registration platform supports
+it. Anchors credibility for registrants who don't recognize the names.
+
+A topical note: the original draft mentions "real-time cat model
+output." The dashboard intentionally does *not* run a loss model
+(CLIMADA Panel 7 is Phase 2, post-launch). Don't promise modeling
+that isn't shipping. The revised description quietly drops that line
+and lets Vijay carry the modeling angle from his firm's perspective.
+
+### Pre-session dashboard polish window — Mon–Wed June 8–10
+
+Tighter than originally planned: the move from June 18 to June 11
+collapses the polish window from a full week to roughly three days
+(Monday June 8 through Wednesday June 11 morning), and it overlaps
+with the tail end of the post-launch first week. Use this window for
+low-risk UX tweaks ONLY — anything that would otherwise wait gets
+deferred until after the webinar.
+
+- [ ] Captions and tooltips that the soft-launch + first-week feedback
+      flagged as ambiguous.
+- [ ] Any obvious empty-state copy that reads weird with a quiet
+      pre-peak-season basin.
+- [ ] Verify all four ingest jobs are still healthy in Render logs;
+      yfinance Yahoo-endpoint changes are the most likely silent
+      breakage between launch and June 11.
+- [ ] Run the share-card validators one more time
+      ([Twitter](https://cards-dev.twitter.com/validator),
+      [Facebook](https://developers.facebook.com/tools/debug/)) — if
+      anyone has shared the URL since launch, the cards are cached and
+      "Preview card" forces a refresh.
+- [ ] **Hard rule: no new features this week, no exceptions.** With
+      only three days between Mon-AM and Wed-PM, a regression has
+      almost no time to surface before the webinar. Polish only.
+      Anything bigger waits until after.
+
+### Three-stage registration leverage
+
+Registrations are the durable asset, not the live event. A focused
+industry webinar in this demographic typically pulls 100–300 sign-ups
+— a permission-based mailing list that's pre-qualified by the act of
+signing up. Three stages:
+
+**T-3 days (~Sunday June 8) — pre-event email to all registrants.**
+
+> Looking forward to seeing you Wednesday. We'll be working live from
+> the RMN Hurricane Dashboard during the session — bookmark
+> [riskmarketnews.com](https://riskmarketnews.com) and take a look
+> beforehand. Two minutes of familiarity makes the conversation easier
+> to follow.
+
+Drives traffic + warms registrants up. Bonus: surfaces dashboard bugs
+from a wider audience three days before the live event, which you can
+fix in the polish window.
+
+**Day-of (~Wednesday June 11, 2pm) — choreography during the session.**
+
+- [ ] Pre-arrange with Vijay and Patrick which panels each will riff
+      off (mapping above). A soft "hey Vijay, what does Panel 3 look
+      like to you right now?" anchors the visual without scripting
+      practitioners into stiffness.
+- [ ] Have the dashboard open in a browser tab on your screen.
+      Screen-share when each panel comes up. Don't switch panels
+      mid-sentence — let panelists drive the visual cadence.
+- [ ] If a storm is active in the Atlantic on the day, lead with
+      Panel 1 cold-open. Panel 1 + an experienced ILS practitioner is
+      a documentary moment.
+- [ ] Have a fallback if the live dashboard hiccups: a static
+      screenshot of each panel queued in the slides, so a render
+      stutter doesn't derail the segment.
+
+**T+1 (~Thursday June 12) — follow-up email to all registrants.**
+
+Send two things:
+
+1. The session recording link.
+2. A "what's changed on the dashboard since the session" hook
+   pointing specifically at Panel 6 ("What changed today").
+
+The session is one-shot; the dashboard is recurring. The follow-up
+email is what converts a single attention moment into a habit.
+
+**Recurring (weekly through Nov 30) — two-line nudge during hurricane
+season.**
+
+> This week on the dashboard: [most-active panel — usually Panel 1 if
+> there's a storm, Panel 6 otherwise]. [Link]
+
+Even at a 5–10% weekly click-through, this is the highest-leverage
+marketing channel the dashboard will have during its first season.
+
+### Post-webinar tasks
+
+- [ ] **Capture the recording URL** in this doc so it lives somewhere
+      durable (replace this checkbox with the link after publishing).
+- [ ] **Pull registration data** into a single CSV — name, firm,
+      email, signup timestamp. This is the asset; back it up.
+- [ ] **Note dashboard moments** the panelists pointed at. Anything
+      they questioned, validated, or improvised on becomes either
+      copy/feature work or future episode hooks.
+- [ ] **Update the Lessons section below** with anything the session
+      surfaced about the dashboard's voice or panel mix.
+
+### TBD — fill in before June 8
+
+- [ ] Webinar platform (Zoom / Hopin / Streamyard / RMN-house?) —
+      affects whether registration capture, recording, and follow-up
+      automation are all in one place or need stitching.
+- [ ] Time zone confirmation — "2pm" needs to be unambiguous on the
+      registration page (presumed 2pm ET; confirm).
+- [ ] Panelist bios for the registration page (~30 words each).
+- [ ] Third panelist? Two is workable but three usually reads better
+      on a registration page; an academic-side voice (NHC alum,
+      Princeton GFDL, or similar) would round out the "science" leg.
+- [ ] Pre-event email copy locked in (T-3 send) and follow-up email
+      copy drafted (T+1 send) by the polish-week kickoff.
+
+---
+
 ## Lessons (filled in post-launch)
 
 _TBD — this section gets written the day after launch. Capture
