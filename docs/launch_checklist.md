@@ -19,10 +19,21 @@ of the doc is structured so the answers slot in cleanly.
 
 - [ ] **Newsletter platform.** Which one? (Substack / Beehiiv / Ghost /
       RMN-house?) Affects preview-card testing and the send sequence.
-- [ ] **DNS for `riskmarketnews.com`.** Already pointing at Render, or
-      still on the launch-week TODO list? The OG meta tags hardcode
-      `https://riskmarketnews.com`, so the canonical domain has to
-      resolve before share-card previews work end-to-end.
+- [ ] **DNS for `hurricane.riskmarketnews.com`.** Day 28 architecture
+      decision: dashboard lives on a `hurricane.` subdomain so the
+      apex (`riskmarketnews.com` / `www.`) stays for the existing
+      Ghost-hosted RMN content site. CNAME at Hover →
+      `rmn-hurricane-dashboard.onrender.com`; Render auto-issues
+      the Let's Encrypt cert once DNS resolves. The OG meta tags
+      hardcode `https://hurricane.riskmarketnews.com`, so the
+      canonical subdomain must resolve before share-card previews
+      work end-to-end.
+- [ ] **Apex/`www` Ghost wiring** — out of scope for this checklist
+      but worth tracking somewhere. Today (~6 weeks pre-launch) the
+      apex shows the Hover parking page; before launch it should
+      point at the existing Ghost site so registrants who type
+      `riskmarketnews.com` get the broader RMN brand, not parking.
+      Ghost has its own custom-domain wiring (separate from Render).
 - [ ] **Tweet cadence.** Single launch tweet, or a 2–3 tweet thread?
       Affects what supporting copy needs drafting now vs. on the day.
 - [ ] **Soft-launch audience.** 2–3 RMN-adjacent friends, ideally one
@@ -72,7 +83,7 @@ Send a short note to the soft-launch list. Suggested template:
 >    asking for a thoughtful read; first-impression friction is what
 >    I need.
 >
-> URL: https://riskmarketnews.com
+> URL: https://hurricane.riskmarketnews.com
 >
 > Reply by [date] if you can. No worries if not.
 
@@ -105,7 +116,7 @@ Read top to bottom; rough chronological order.
 - [ ] `pre-commit run --all-files` clean (belt-and-suspenders on the
       ruff checks; runs the same hooks).
 - [ ] Render service status: **Live**. Most recent deploy succeeded.
-- [ ] `curl https://riskmarketnews.com/healthz` → `{"status": "ok"}`.
+- [ ] `curl https://hurricane.riskmarketnews.com/healthz` → `{"status": "ok"}`.
 - [ ] Hit the live URL in **three contexts**:
   - [ ] iPhone Safari (real device, not simulator)
   - [ ] Desktop incognito (no cached assets)
@@ -272,11 +283,11 @@ page in place of the original:
 > a changing climate.
 >
 > We'll work directly from the new **RMN Hurricane Dashboard**
-> ([riskmarketnews.com](https://riskmarketnews.com)) — live cat bond
-> and listed-insurer pricing, real-time NHC forecasts and landfall
-> probabilities, and a curated universe of hurricane-exposed equities
-> — to ground the conversation in what's actually happening on the
-> day.
+> ([hurricane.riskmarketnews.com](https://hurricane.riskmarketnews.com))
+> — live cat bond and listed-insurer pricing, real-time NHC forecasts
+> and landfall probabilities, and a curated universe of hurricane-
+> exposed equities — to ground the conversation in what's actually
+> happening on the day.
 >
 > Topics: rapid intensification and compound storm events; ILS and
 > reinsurance pricing signals; the gap between institutional cat-bond
@@ -330,9 +341,9 @@ signing up. Three stages:
 
 > Looking forward to seeing you Wednesday. We'll be working live from
 > the RMN Hurricane Dashboard during the session — bookmark
-> [riskmarketnews.com](https://riskmarketnews.com) and take a look
-> beforehand. Two minutes of familiarity makes the conversation easier
-> to follow.
+> [hurricane.riskmarketnews.com](https://hurricane.riskmarketnews.com)
+> and take a look beforehand. Two minutes of familiarity makes the
+> conversation easier to follow.
 
 Drives traffic + warms registrants up. Bonus: surfaces dashboard bugs
 from a wider audience three days before the live event, which you can
