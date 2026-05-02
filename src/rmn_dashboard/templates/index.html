@@ -9,7 +9,18 @@
   <script src="{{ url_for('static', path='/js/panel_changes.js') }}" defer></script>
   <script src="{{ url_for('static', path='/js/panel_analogs.js') }}" defer></script>
 
+  {#
+    Page-level h1 (Day 29). Day 29's RMN-branded header replaced the
+    old "Risk Market News / Hurricane Dashboard" stack with the
+    wordmark-only header from base.html, so the document needed a
+    page title here for SEO and accessibility. Source Serif 4 bold
+    via .rmn-heading lets it sit visually under the wordmark
+    (different weight) without competing with it.
+  #}
   <section class="mb-6">
+    <h1 class="rmn-heading text-2xl sm:text-3xl text-slate-900 mb-2">
+      Hurricane Dashboard
+    </h1>
     <p class="max-w-3xl text-sm text-slate-600 leading-relaxed">
       How hurricane risk is being priced, today, by the people who have to
       pay for it — translated for people who don't speak insurance. Updated

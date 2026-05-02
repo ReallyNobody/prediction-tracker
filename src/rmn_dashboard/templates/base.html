@@ -51,6 +51,19 @@
     <meta name="twitter:image" content="https://hurricane.riskmarketnews.com{{ url_for('static', path='/og-image.png') }}" />
     <meta name="twitter:image:alt" content="RMN Hurricane Dashboard — hurricane risk pricing, translated." />
 
+    <!--
+      Brand fonts (Day 29). Inter for body / UI; Source Serif 4 for the
+      RMN wordmark and any page-level h1. Both are Google Fonts, free,
+      with the variable-axis files served (no waterfall of weight files).
+      Preconnect hints cut ~50ms off first-paint on cold cache.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:wght@400;700;900&display=swap"
+      rel="stylesheet"
+    />
+
     <!-- Tailwind via CDN (MVP only — compile step lands in Phase 2) -->
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -82,8 +95,82 @@
     ></script>
 
     <style>
-      /* Minor readability tweaks on top of Tailwind's defaults */
-      html { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+      /*
+        Brand variables (Day 29). Single source of truth for the RMN
+        palette so future pages can pull them off `:root` rather than
+        re-declaring hex codes. The dashboard inherits the same cream
+        background and accent blue as the Ghost site so a reader who
+        clicks through from the main RMN brand into the dashboard feels
+        no visual seam.
+
+        --rmn-blue is the only blue Chris confirmed (used for the
+        "models" accent and the Sign-up pill). Used for the wordmark
+        too. If the wordmark needs a darker shade later, add a separate
+        `--rmn-blue-dark` rather than overloading this one.
+      */
+      :root {
+        --rmn-cream: #F7F4F1;
+        --rmn-blue: #6B8BB1;
+        --rmn-divider: #C47B5F;
+      }
+
+      /* Inter for body / UI by default; Source Serif 4 reserved for
+         the RMN wordmark and page-level h1 (via `.rmn-heading`). */
+      html, body {
+        font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      body { background: var(--rmn-cream); }
+
+      /* Branded h1 — used on the dashboard's page-title row to anchor
+         the document semantically without competing with the RMN
+         wordmark above. Font-weight is bold (not black) so the page
+         title sits visually under the wordmark, not parallel to it. */
+      .rmn-heading {
+        font-family: 'Source Serif 4', Georgia, "Times New Roman", serif;
+        font-weight: 700;
+      }
+
+      /* RMN-style header (Day 29). Layout via Tailwind utilities
+         in the markup; brand-specific colour and typography live
+         here so the rest of the page can stay utility-driven. */
+      .rmn-header {
+        background: var(--rmn-cream);
+        border-bottom: 1px solid rgba(196, 123, 95, 0.18);
+      }
+      .rmn-wordmark {
+        font-family: 'Source Serif 4', Georgia, "Times New Roman", serif;
+        font-weight: 900;
+        font-size: 1.25rem;
+        line-height: 1;
+        letter-spacing: -0.01em;
+        text-transform: uppercase;
+        color: var(--rmn-blue);
+        text-decoration: none;
+        white-space: nowrap;
+      }
+      .rmn-wordmark:hover { opacity: 0.85; }
+      @media (min-width: 640px) { .rmn-wordmark { font-size: 1.5rem; } }
+      @media (min-width: 768px) { .rmn-wordmark { font-size: 1.75rem; } }
+
+      .rmn-signin {
+        font-size: 0.95rem;
+        color: #1A1A1A;
+        text-decoration: none;
+      }
+      .rmn-signin:hover { opacity: 0.7; }
+
+      .rmn-signup {
+        display: inline-block;
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: white;
+        background: var(--rmn-blue);
+        padding: 0.5rem 1.25rem;
+        border-radius: 9999px;
+        text-decoration: none;
+        transition: background 0.15s ease;
+      }
+      .rmn-signup:hover { background: #5A7A9F; }
 
       /* Panel min-height on desktop keeps the 6-panel grid visually
          even — without it, a sparse Cat-bond panel would float above
@@ -109,19 +196,44 @@
       }
     </style>
   </head>
-  <body class="bg-slate-50 text-slate-900 antialiased">
-    <header class="border-b border-slate-200 bg-white">
-      <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8 flex items-baseline justify-between">
-        <div>
-          <p class="text-xs uppercase tracking-widest text-slate-500">
-            Risk Market News
-          </p>
-          <h1 class="text-xl font-semibold text-slate-900 sm:text-2xl">
-            Hurricane Dashboard
-          </h1>
-        </div>
-        <nav class="text-sm text-slate-600">
-          <span class="text-slate-400">{{ build_status }}</span>
+  <body class="text-slate-900 antialiased">
+    {#
+      RMN-branded header (Day 29). Replaces the Day 1-3 plain
+      "Risk Market News / Hurricane Dashboard" stack with a header
+      that visually matches the Ghost-hosted brand site at the apex —
+      cream background, brand-blue wordmark, Sign in / Sign up wired
+      to the Ghost member-portal anchors. The dashboard is one
+      product within RMN, not an off-brand standalone, and the
+      header is the cheapest place to communicate that.
+
+      Logo glyph (the cyclone mark) is intentionally NOT rendered
+      here yet — we have the brand colour and font but not yet a
+      transparent-background SVG/PNG of the mark. When the asset
+      lands at /static/img/rmn-logo.svg (or equivalent), insert
+      `<img src="..." alt="" class="h-8 w-auto">` immediately before
+      the wordmark span and the layout will adjust automatically
+      thanks to the `flex items-center` parent.
+
+      Search and hamburger menu are deliberately omitted — search has
+      nothing to search on a single-page dashboard, and the hamburger
+      would only ever link back to the main RMN site, which is what
+      clicking the wordmark does.
+    #}
+    <header class="rmn-header">
+      <div class="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
+        <a href="https://www.riskmarketnews.com"
+           class="rmn-wordmark"
+           aria-label="Risk Market News home">
+          Risk Market News
+        </a>
+        <nav class="flex items-center gap-3 sm:gap-5">
+          {# Sign in is hidden below sm: to keep the right side from
+             wrapping on narrow phones — Sign up alone is the priority
+             CTA and remains visible at every width. #}
+          <a href="https://www.riskmarketnews.com/#/portal/signin"
+             class="rmn-signin hidden sm:inline">Sign in</a>
+          <a href="https://www.riskmarketnews.com/#/portal/signup"
+             class="rmn-signup">Sign up</a>
         </nav>
       </div>
     </header>
