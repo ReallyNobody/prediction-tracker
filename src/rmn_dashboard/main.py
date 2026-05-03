@@ -93,12 +93,19 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 app.include_router(api_router)
 
 
-@app.get("/", response_class=HTMLResponse)
+@app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
 async def index(
     request: Request,
     db: Session = Depends(get_session),
 ) -> HTMLResponse:
-    """The main dashboard page — panel shells plus the live Kalshi markets list."""
+    """The main dashboard page — panel shells plus the live Kalshi markets list.
+
+    Accepts both GET and HEAD. HEAD support added Day 30 to keep the access
+    log clean: probes, link-preview crawlers, and curl-with-default-flags
+    all issue HEAD requests on the root, and a GET-only handler responded
+    with 405 Method Not Allowed. The starlette layer auto-strips the body
+    on HEAD responses (per HTTP spec), so the same handler works for both.
+    """
     cat_loss_count = db.scalar(select(func.count()).select_from(CatLoss)) or 0
     markets = latest_hurricane_markets(db)
 

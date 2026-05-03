@@ -240,6 +240,23 @@ def test_healthz(client: TestClient) -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_index_supports_head_request(client: TestClient) -> None:
+    """``HEAD /`` returns 200 with an empty body. Day 30 fix: probes,
+    link-preview crawlers, and curl-with-default-flags all issue HEAD
+    requests on the root; before this fix the GET-only handler
+    responded 405 Method Not Allowed and littered the access log.
+
+    Per HTTP spec, the response should carry the same headers as GET
+    but no body — starlette/FastAPI handles the body-stripping
+    automatically when methods=["GET", "HEAD"] is declared on the
+    route.
+    """
+    response = client.head("/")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert response.content == b""
+
+
 def test_index_ships_share_card_meta(client: TestClient) -> None:
     """The index page advertises Open Graph + Twitter card metadata
     so links preview cleanly when shared on social / chat platforms.
