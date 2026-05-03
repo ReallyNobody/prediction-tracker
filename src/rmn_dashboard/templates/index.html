@@ -22,9 +22,9 @@
       Hurricane Dashboard
     </h1>
     <p class="max-w-3xl text-sm text-slate-600 leading-relaxed">
-      How hurricane risk is being priced, today, by the people who have to
-      pay for it — translated for people who don't speak insurance. Updated
-      throughout the day during hurricane season.
+      How hurricane risk is being tracked by models and researchers
+      while also being priced by markets. Updated throughout the day
+      during hurricane season.
     </p>
   </section>
 
@@ -65,11 +65,23 @@
            data-testid="forecast-storm-details"></div>
     </section>
 
-    {#  Panel 4 — Prediction market sidebar (small, honest)  #}
+    {#  Panel 4 — Prediction market sidebar (small, honest).
+        Day 31: renamed from "Markets on it" to "Prediction Markets"
+        (more descriptive, matches the term readers will Google) and
+        added a short explainer of the Yes-price + OI fields below
+        the heading, since first-time readers can't be assumed to
+        know what they're looking at. #}
     <aside class="panel-shell rounded-lg border border-slate-200 bg-white p-5">
       <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">
-        Markets on it
+        Prediction Markets
       </h2>
+      <p class="mt-1 text-xs text-slate-400 leading-relaxed">
+        On Kalshi, the "Yes" price reflects the market's implied
+        probability of an event occurring (and what you pay per
+        contract to receive a fixed payout if it happens), while
+        "OI" (open interest) shows the total number of active
+        contracts currently open across that market.
+      </p>
       {% if markets %}
         <ul class="mt-3 divide-y divide-slate-100">
           {% for m in markets %}
@@ -255,10 +267,10 @@
            data-testid="risk-capital-as-of"></p>
       </div>
       <p class="mt-1 text-xs text-slate-400 leading-relaxed">
-        Two public proxies for where hurricane-risk capital is priced
-        today — the cat bond market and listed P&amp;C insurers. The
-        institutional Swiss Re cat bond index sits behind a Bloomberg
-        subscription; these ETFs move with the same underlying markets.
+        Publicly traded proxies for where hurricane-risk capital is
+        priced today — the cat bond market and listed P&amp;C
+        insurers. These ETFs and other structures move with the same
+        underlying markets.
       </p>
       <div id="risk-capital-readout"
            class="mt-3 hidden"

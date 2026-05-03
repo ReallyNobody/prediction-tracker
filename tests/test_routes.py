@@ -35,10 +35,12 @@ def test_index_returns_html_with_panel_shells(client: TestClient) -> None:
     # Companies on the line; Day 15 renamed Cat Bond Spreads → Cat bond
     # market when we pivoted from gated index data to a public ETF proxy;
     # Day 20 renamed Cat bond market → Hurricane risk capital when we
-    # added KBWP (P&C insurance index ETF) as a second row alongside ILS.
+    # added KBWP (P&C insurance index ETF) as a second row alongside ILS;
+    # Day 31 renamed "Markets on it" → "Prediction Markets" (clearer
+    # category term, less voicy, matches what readers will Google).
     for heading in (
         "Active storms",
-        "Markets on it",
+        "Prediction Markets",
         "Landfall probability",
         "Companies on the line",
         "Hurricane risk capital",
