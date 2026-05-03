@@ -50,6 +50,13 @@ of the doc is structured so the answers slot in cleanly.
 
 ## Soft-launch (~1 week pre-launch)
 
+> **See also**: [`beta_testing_plan.md`](beta_testing_plan.md) for the
+> full three-phase user-validation strategy (inner-circle bug-hunt
+> this week → soft-launch May 26 → webinar dress rehearsal June 8-10).
+> This section is the operational checklist for soft-launch day; the
+> companion doc covers archetype mix, structured asks, feedback
+> capture, and triage windows in more depth.
+
 ### Purpose
 
 Not focus-group feedback in the abstract sense — a real-world dress
