@@ -131,10 +131,15 @@ Read top to bottom; rough chronological order.
         + [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/) —
         confirm the OG image renders as a `summary_large_image` card.
 - [ ] Eyeball the panel layout. All seven panels render: Active storms,
-      Markets on it, Landfall probability, Companies on the line,
+      Prediction Markets, Landfall probability, Companies on the line,
       Hurricane risk capital, Historical analogs, What changed today.
 - [ ] Render logs show recent successful ingest ticks (yfinance the
       cleanest signal; should be persisting ~37 rows every 15 min).
+- [ ] **Plausible analytics counting events.** Visit
+      `https://plausible.io/hurricane.riskmarketnews.com` — should
+      show a non-zero pageview count from your own pre-flight visits.
+      If "no data yet," the script tag isn't loading; check Render
+      deploy logs and view-source on the live site.
 
 ### The send
 

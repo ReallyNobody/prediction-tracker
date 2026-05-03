@@ -64,6 +64,35 @@
       rel="stylesheet"
     />
 
+    <!--
+      Plausible analytics (Day 35). Privacy-friendly counter — no
+      cookies, no consent banner needed (GDPR/ePrivacy compliant by
+      default). Stats live at
+      https://plausible.io/hurricane.riskmarketnews.com.
+
+      Uses Plausible's newer init-API snippet rather than the older
+      data-domain-based script. The site-specific script URL has a
+      unique site ID baked in (the `pa-XXXX.js` filename), so we
+      don't need a separate `data-domain` attribute. The script
+      no-ops on any hostname that doesn't match the registered
+      domain, so localhost dev sessions don't pollute prod stats
+      and we don't need a Jinja conditional gating on APP_ENV.
+
+      Feature flags (outbound link tracking, file-download tracking,
+      tagged events for custom analytics) are opt-in via options
+      passed to plausible.init(). Currently we just call plausible.init()
+      with no options — basic pageview tracking only. To add outbound
+      link tracking later (clicks on Kalshi market URLs, click-throughs
+      to the RMN Ghost site), update the init call per Plausible's
+      current docs.
+    -->
+    <!-- Privacy-friendly analytics by Plausible -->
+    <script async src="https://plausible.io/js/pa-4aJ9FRC61nY7mz681wGbz.js"></script>
+    <script>
+      window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+      plausible.init()
+    </script>
+
     <!-- Tailwind via CDN (MVP only — compile step lands in Phase 2) -->
     <script src="https://cdn.tailwindcss.com"></script>
 
