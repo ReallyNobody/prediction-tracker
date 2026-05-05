@@ -91,9 +91,7 @@ def _client() -> httpx.Client:
             # Identify ourselves so Polymarket can rate-limit / contact
             # us if our usage misbehaves. Same convention as the SEC
             # User-Agent we use for NHC.
-            "User-Agent": (
-                "Risk Market News probe (research@riskmarketnews.com)"
-            ),
+            "User-Agent": ("Risk Market News probe (research@riskmarketnews.com)"),
             "Accept": "application/json",
         },
     )
@@ -136,9 +134,7 @@ def _paginate_markets(client: httpx.Client) -> list[dict[str, Any]]:
         if not batch:
             break
         markets.extend(batch)
-        print(
-            f"  page {page + 1}: +{len(batch)} markets (running total: {len(markets)})"
-        )
+        print(f"  page {page + 1}: +{len(batch)} markets (running total: {len(markets)})")
         if len(batch) < PER_PAGE:
             break
         time.sleep(PER_PAGE_SLEEP)

@@ -19,7 +19,17 @@ def latest_hurricane_markets(
     limit: int = 10,
 ) -> list[PredictionMarket]:
     """Return the most recent snapshot per hurricane market, ordered by
-    open interest descending (most-capital-at-risk first).
+    cumulative trading volume descending (most-traded first).
+
+    Day 37 ordering pivot: previously ranked by open interest, but with
+    Polymarket added as a second platform alongside Kalshi we needed a
+    metric both platforms expose at the per-market level. Polymarket
+    reports OI only on the parent event (we surface it for display, but
+    it's nested), whereas ``volume_total`` sits cleanly at the market
+    level on both platforms. Volume is also editorially the more
+    interesting metric for a journalism dashboard — "how much money
+    has actually moved on this question?" reads more directly than
+    open contract count.
 
     Implementation note: group-by subquery → join. Portable across SQLite
     (dev) and Postgres (prod); no need for Postgres-only ``DISTINCT ON`` or
@@ -49,10 +59,10 @@ def latest_hurricane_markets(
         )
         .where(PredictionMarket.category == "hurricane")
         .order_by(
-            # NULL open_interest sorts last so rows with real liquidity always
-            # show first — important in the first days of a season when half
-            # the markets have zero OI.
-            PredictionMarket.open_interest.desc().nulls_last(),
+            # NULL volume sorts last so rows with real activity always show
+            # first — important pre-season when half the markets have zero
+            # volume.
+            PredictionMarket.volume_total.desc().nulls_last(),
             PredictionMarket.ticker,
         )
         .limit(limit)

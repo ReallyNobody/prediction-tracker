@@ -26,10 +26,12 @@ from rmn_dashboard.scheduler import (
     KALSHI_JOB_ID,
     NHC_FORECAST_JOB_ID,
     NHC_JOB_ID,
+    POLYMARKET_JOB_ID,
     YFINANCE_JOB_ID,
     _run_kalshi_ingest_job,
     _run_nhc_forecast_ingest_job,
     _run_nhc_ingest_job,
+    _run_polymarket_ingest_job,
     _run_yfinance_ingest_job,
     build_scheduler,
 )
@@ -41,6 +43,7 @@ _DEFAULT_INTERVALS = {
     "nhc_interval_minutes": 15,
     "nhc_forecast_interval_minutes": 30,
     "yfinance_interval_minutes": 15,
+    "polymarket_interval_minutes": 15,
 }
 
 # ----- build_scheduler -----------------------------------------------------
@@ -88,22 +91,36 @@ def test_build_scheduler_registers_yfinance_ingest_job() -> None:
     assert job.coalesce is True
 
 
+def test_build_scheduler_registers_polymarket_ingest_job() -> None:
+    """Day 37: Polymarket Gamma ingest fires alongside Kalshi as the
+    second prediction-market source for Panel 4."""
+    scheduler = build_scheduler(**_DEFAULT_INTERVALS, run_on_start=False)
+    job = scheduler.get_job(POLYMARKET_JOB_ID)
+    assert job is not None
+    assert job.trigger.interval.total_seconds() == 15 * 60
+    assert job.max_instances == 1
+    assert job.coalesce is True
+
+
 def test_build_scheduler_independent_intervals() -> None:
     """Intervals are tuned per-source — Kalshi has a rate limit, NHC
     observations are cheap, forecast shapefiles only republish on advisory
-    boundaries, yfinance is delay-bounded by Yahoo. Each trigger must
-    reflect its own configured cadence."""
+    boundaries, yfinance is delay-bounded by Yahoo, Polymarket has no
+    documented rate limit but we keep its cadence parallel to Kalshi.
+    Each trigger must reflect its own configured cadence."""
     scheduler = build_scheduler(
         kalshi_interval_minutes=5,
         nhc_interval_minutes=15,
         nhc_forecast_interval_minutes=60,
         yfinance_interval_minutes=20,
+        polymarket_interval_minutes=10,
         run_on_start=False,
     )
     assert scheduler.get_job(KALSHI_JOB_ID).trigger.interval.total_seconds() == 5 * 60
     assert scheduler.get_job(NHC_JOB_ID).trigger.interval.total_seconds() == 15 * 60
     assert scheduler.get_job(NHC_FORECAST_JOB_ID).trigger.interval.total_seconds() == 60 * 60
     assert scheduler.get_job(YFINANCE_JOB_ID).trigger.interval.total_seconds() == 20 * 60
+    assert scheduler.get_job(POLYMARKET_JOB_ID).trigger.interval.total_seconds() == 10 * 60
 
 
 def test_build_scheduler_run_on_start_pins_immediate_first_run() -> None:
@@ -112,6 +129,7 @@ def test_build_scheduler_run_on_start_pins_immediate_first_run() -> None:
     assert scheduler.get_job(NHC_JOB_ID).next_run_time is not None
     assert scheduler.get_job(NHC_FORECAST_JOB_ID).next_run_time is not None
     assert scheduler.get_job(YFINANCE_JOB_ID).next_run_time is not None
+    assert scheduler.get_job(POLYMARKET_JOB_ID).next_run_time is not None
 
 
 def test_build_scheduler_without_run_on_start_leaves_next_run_unset() -> None:
@@ -122,6 +140,7 @@ def test_build_scheduler_without_run_on_start_leaves_next_run_unset() -> None:
     assert scheduler.get_job(NHC_JOB_ID).next_run_time is None
     assert scheduler.get_job(NHC_FORECAST_JOB_ID).next_run_time is None
     assert scheduler.get_job(YFINANCE_JOB_ID).next_run_time is None
+    assert scheduler.get_job(POLYMARKET_JOB_ID).next_run_time is None
 
 
 def test_build_scheduler_accepts_injectable_kalshi_job() -> None:
@@ -137,6 +156,7 @@ def test_build_scheduler_accepts_injectable_kalshi_job() -> None:
         nhc_interval_minutes=1,
         nhc_forecast_interval_minutes=1,
         yfinance_interval_minutes=1,
+        polymarket_interval_minutes=1,
         kalshi_job=fake_job,
         run_on_start=False,
     )
@@ -157,6 +177,7 @@ def test_build_scheduler_accepts_injectable_nhc_job() -> None:
         nhc_interval_minutes=1,
         nhc_forecast_interval_minutes=1,
         yfinance_interval_minutes=1,
+        polymarket_interval_minutes=1,
         nhc_job=fake_job,
         run_on_start=False,
     )
@@ -176,10 +197,31 @@ def test_build_scheduler_accepts_injectable_nhc_forecast_job() -> None:
         nhc_interval_minutes=1,
         nhc_forecast_interval_minutes=1,
         yfinance_interval_minutes=1,
+        polymarket_interval_minutes=1,
         nhc_forecast_job=fake_job,
         run_on_start=False,
     )
     job = scheduler.get_job(NHC_FORECAST_JOB_ID)
+    job.func()
+    assert calls == [1]
+
+
+def test_build_scheduler_accepts_injectable_polymarket_job() -> None:
+    calls: list[int] = []
+
+    def fake_job() -> None:
+        calls.append(1)
+
+    scheduler = build_scheduler(
+        kalshi_interval_minutes=1,
+        nhc_interval_minutes=1,
+        nhc_forecast_interval_minutes=1,
+        yfinance_interval_minutes=1,
+        polymarket_interval_minutes=1,
+        polymarket_job=fake_job,
+        run_on_start=False,
+    )
+    job = scheduler.get_job(POLYMARKET_JOB_ID)
     job.func()
     assert calls == [1]
 
@@ -195,6 +237,7 @@ def test_build_scheduler_accepts_injectable_yfinance_job() -> None:
         nhc_interval_minutes=1,
         nhc_forecast_interval_minutes=1,
         yfinance_interval_minutes=1,
+        polymarket_interval_minutes=1,
         yfinance_job=fake_job,
         run_on_start=False,
     )
@@ -388,6 +431,55 @@ def test_yfinance_job_wrapper_closes_session_on_success() -> None:
         patch("rmn_dashboard.scheduler.run_yfinance_ingest", return_value=0),
     ):
         _run_yfinance_ingest_job()
+    session.close.assert_called_once()
+
+
+# ----- _run_polymarket_ingest_job -----------------------------------------
+
+
+def test_polymarket_job_wrapper_logs_success_count(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    session = MagicMock()
+    with (
+        patch("rmn_dashboard.scheduler.SessionLocal", return_value=session),
+        patch("rmn_dashboard.scheduler.run_polymarket_ingest", return_value=5),
+        caplog.at_level(logging.INFO, logger="rmn_dashboard.scheduler"),
+    ):
+        _run_polymarket_ingest_job()
+
+    assert any("persisted 5 rows" in r.message for r in caplog.records), caplog.text
+    session.close.assert_called_once()
+
+
+def test_polymarket_job_wrapper_swallows_exceptions(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Gamma is public and stable but a transient network blip or schema
+    drift could still throw. The wrapper logs and the next tick retries."""
+    session = MagicMock()
+    with (
+        patch("rmn_dashboard.scheduler.SessionLocal", return_value=session),
+        patch(
+            "rmn_dashboard.scheduler.run_polymarket_ingest",
+            side_effect=RuntimeError("polymarket exploded"),
+        ),
+        caplog.at_level(logging.ERROR, logger="rmn_dashboard.scheduler"),
+    ):
+        _run_polymarket_ingest_job()
+
+    assert any("failed; will retry next tick" in r.message for r in caplog.records)
+    session.close.assert_called_once()
+
+
+def test_polymarket_job_wrapper_closes_session_on_success() -> None:
+    """Off-season zero rows is a normal state; session must still close."""
+    session = MagicMock()
+    with (
+        patch("rmn_dashboard.scheduler.SessionLocal", return_value=session),
+        patch("rmn_dashboard.scheduler.run_polymarket_ingest", return_value=0),
+    ):
+        _run_polymarket_ingest_job()
     session.close.assert_called_once()
 
 

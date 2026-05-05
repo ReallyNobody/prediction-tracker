@@ -61,7 +61,12 @@ def test_index_shows_empty_state_when_no_markets(client: TestClient) -> None:
 def test_index_renders_market_rows_when_seeded(client: TestClient, db_session: Session) -> None:
     """Seed one snapshot via ``db_session`` (shares the test engine with the
     TestClient) then assert the panel renders the title, Yes price as cents,
-    open interest, and the Kalshi link."""
+    cumulative volume, the 24h delta, and the Kalshi link.
+
+    Day 37 updated: panel switched from OI display to volume display when
+    Polymarket joined Kalshi. The seeded volume_total + volume_24h drive
+    the new $-formatted readout.
+    """
     db_session.add(
         PredictionMarket(
             platform="kalshi",
@@ -71,7 +76,9 @@ def test_index_renders_market_rows_when_seeded(client: TestClient, db_session: S
             category="hurricane",
             yes_price=0.42,
             no_price=0.58,
-            open_interest=269.0,
+            volume_total=12345.0,
+            volume_24h=678.0,
+            open_interest=269.0,  # still on the model; just no longer displayed
             last_updated=datetime(2026, 4, 23, 12, 0, tzinfo=UTC),
         )
     )
@@ -81,9 +88,45 @@ def test_index_renders_market_rows_when_seeded(client: TestClient, db_session: S
     assert "Will there be more than 7 Atlantic hurricanes in 2026?" in body
     assert "kalshi.com/markets/KXHURCTOT-26DEC01-T7" in body
     assert "42¢" in body  # yes_price formatted as cents
-    assert "269" in body  # open interest
+    assert "$12,345" in body  # cumulative volume formatted as dollars
+    assert "+$678" in body  # 24h volume delta inline
     # Empty-state copy should be gone now.
     assert "No hurricane prediction markets are open right now" not in body
+
+
+def test_index_renders_polymarket_row_with_polymarket_url(
+    client: TestClient, db_session: Session
+) -> None:
+    """Day 37 added per-platform URL routing in Panel 4. A Polymarket row
+    should render with a polymarket.com/event/{slug} URL, not a kalshi.com
+    URL.
+
+    Also asserts the platform tag (lowercase) appears in the row, so
+    readers can distinguish where each market lives without clicking
+    through.
+    """
+    db_session.add(
+        PredictionMarket(
+            platform="polymarket",
+            ticker="will-a-hurricane-form-by-may-31",
+            event_ticker="will-a-hurricane-form-by-may-31",
+            title="Will a hurricane form by May 31?",
+            category="hurricane",
+            yes_price=0.05,
+            no_price=0.95,
+            volume_total=46924.0,
+            volume_24h=120.0,
+            last_updated=datetime(2026, 4, 23, 12, 0, tzinfo=UTC),
+        )
+    )
+    db_session.commit()
+
+    body = client.get("/").text
+    assert "Will a hurricane form by May 31?" in body
+    assert "polymarket.com/event/will-a-hurricane-form-by-may-31" in body
+    assert "kalshi.com/markets/will-a-hurricane-form-by-may-31" not in body
+    assert "polymarket" in body  # lowercase platform tag
+    assert "$46,924" in body
 
 
 def test_index_wires_up_forecast_map(client: TestClient) -> None:

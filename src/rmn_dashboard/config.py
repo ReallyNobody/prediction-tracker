@@ -42,6 +42,16 @@ class Settings(BaseSettings):
     kalshi_private_key_path: str | None = Field(default=None)
     kalshi_base_url: str = Field(default="https://api.elections.kalshi.com/trade-api/v2")
 
+    # --- Polymarket (public Gamma API; no auth) ---
+    # Day 37 added Polymarket alongside Kalshi as a second prediction-market
+    # source for Panel 4. Gamma is free and public — no API key, no signed
+    # requests, just rate-courteous polling. URL is configurable for future
+    # mock-server testing or Polymarket region splits.
+    polymarket_base_url: str = Field(
+        default="https://gamma-api.polymarket.com",
+        description="Polymarket Gamma API base URL.",
+    )
+
     # --- SEC EDGAR ---
     sec_user_agent: str = Field(
         default="Risk Market News research@riskmarketnews.com",
@@ -88,6 +98,18 @@ class Settings(BaseSettings):
             "(minutes). Yahoo Finance is ~15 min delayed regardless, so a "
             "shorter cadence than 15 minutes is wasted bandwidth — match "
             "the delay window."
+        ),
+    )
+    polymarket_ingest_interval_minutes: int = Field(
+        default=15,
+        ge=1,
+        description=(
+            "How often the scheduled Polymarket Gamma ingest fires "
+            "(minutes). Parallel to the Kalshi cadence — Polymarket has "
+            "no documented rate limit but we're a courtesy guest on a "
+            "public endpoint. 15 min keeps the two prediction-market "
+            "sources in temporal lockstep so Panel 4's combined "
+            "freshness reads consistently."
         ),
     )
 
