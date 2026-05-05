@@ -506,7 +506,9 @@ def test_lifespan_starts_and_stops_scheduler_when_enabled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """With scheduler_enabled=True the lifespan must build, start, then shut
-    down the scheduler — once each — passing every configured interval."""
+    down the scheduler — once each — passing every configured interval.
+    Day 37 added a fifth interval (polymarket) so the assertion now
+    pins all five positional args."""
     from rmn_dashboard import main as main_module
 
     monkeypatch.setattr(main_module.settings, "scheduler_enabled", True, raising=False)
@@ -516,13 +518,16 @@ def test_lifespan_starts_and_stops_scheduler_when_enabled(
         main_module.settings, "nhc_forecast_ingest_interval_minutes", 30, raising=False
     )
     monkeypatch.setattr(main_module.settings, "yfinance_ingest_interval_minutes", 15, raising=False)
+    monkeypatch.setattr(
+        main_module.settings, "polymarket_ingest_interval_minutes", 15, raising=False
+    )
 
     fake_scheduler = MagicMock()
     with patch("rmn_dashboard.main.build_scheduler", return_value=fake_scheduler) as builder:
         with TestClient(main_module.app):
-            # Startup ran: builder called with all four intervals,
+            # Startup ran: builder called with all five intervals,
             # scheduler started, but not yet stopped.
-            builder.assert_called_once_with(15, 15, 30, 15)
+            builder.assert_called_once_with(15, 15, 30, 15, 15)
             fake_scheduler.start.assert_called_once()
             fake_scheduler.shutdown.assert_not_called()
         # Shutdown runs when the TestClient context exits.
