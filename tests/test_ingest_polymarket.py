@@ -22,7 +22,6 @@ from rmn_dashboard.tasks.ingest_polymarket import (
     run_polymarket_ingest,
 )
 
-
 # A canonical PolymarketMarket built from the Day 36 probe data — used as
 # the input to the field-mapping tests so we don't have to reconstruct
 # the shape in each test.
@@ -37,9 +36,7 @@ _FIXTURE_MARKET = PolymarketMarket(
     volume_total=17317.78,
     open_interest=2770.31,
     close_time="2026-05-31T00:00:00Z",
-    url=(
-        "https://polymarket.com/event/will-a-hurricane-make-landfall-in-the-us-by-may-31"
-    ),
+    url=("https://polymarket.com/event/will-a-hurricane-make-landfall-in-the-us-by-may-31"),
 )
 
 
