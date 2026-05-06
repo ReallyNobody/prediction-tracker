@@ -219,10 +219,19 @@ def get_todays_changes(db: Session = Depends(get_session)) -> dict[str, object]:
             "ticker": "ILS", "name": "Insurance-Linked Securities ETF",
             "change_percent": -0.8,
             "headline": "ILS -0.80% — cat bond proxy."
-          } | null
+          } | null,
+          "prediction_markets": [
+            {"platform": "polymarket",
+             "ticker": "will-a-hurricane-form-by-may-31",
+             "title": "Will a hurricane form by May 31?",
+             "volume_24h": 5442.0,
+             "headline": "$5,442 on Polymarket — Will a hurricane form by May 31?"},
+            ...
+          ]
         }
 
-    Quiet days return empty ``storms``/``equities`` arrays — Panel 6's
+    Quiet days return empty arrays for ``storms``/``equities``/
+    ``prediction_markets`` and ``null`` for ``cat_bond`` — Panel 6's
     JS renders an honest "Quiet day" message in that case.
     """
     return todays_changes(db)

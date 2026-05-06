@@ -221,16 +221,24 @@ def test_index_wires_up_changes_panel(client: TestClient) -> None:
 
 
 def test_changes_endpoint_returns_expected_shape(client: TestClient) -> None:
-    """``/api/v1/changes/today`` responds with the four-key payload
-    shape ``panel_changes.js`` reads. Fresh DB → empty lists / null.
+    """``/api/v1/changes/today`` responds with the five-key payload
+    shape ``panel_changes.js`` reads. Day 38 added ``prediction_markets``
+    alongside the original four. Fresh DB → empty lists / null.
     """
     response = client.get("/api/v1/changes/today")
     assert response.status_code == 200
     body = response.json()
-    assert set(body.keys()) == {"as_of", "storms", "equities", "cat_bond"}
+    assert set(body.keys()) == {
+        "as_of",
+        "storms",
+        "equities",
+        "cat_bond",
+        "prediction_markets",
+    }
     assert body["storms"] == []
     assert body["equities"] == []
     assert body["cat_bond"] is None
+    assert body["prediction_markets"] == []
 
 
 def test_index_wires_up_risk_capital_panel(client: TestClient) -> None:

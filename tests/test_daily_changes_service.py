@@ -23,7 +23,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from rmn_dashboard.data.universe import load_universe
-from rmn_dashboard.models import Storm, StormObservation, TickerQuote
+from rmn_dashboard.models import PredictionMarket, Storm, StormObservation, TickerQuote
 from rmn_dashboard.services.daily_changes import todays_changes
 
 
@@ -114,22 +114,31 @@ _FIXED_NOW = datetime(2026, 4, 25, 17, 0, tzinfo=UTC)
 
 def test_payload_shape_has_expected_keys(db_session: Session) -> None:
     payload = todays_changes(db_session, now=_FIXED_NOW)
-    assert set(payload.keys()) == {"as_of", "storms", "equities", "cat_bond"}
+    assert set(payload.keys()) == {
+        "as_of",
+        "storms",
+        "equities",
+        "cat_bond",
+        "prediction_markets",
+    }
     assert isinstance(payload["as_of"], str)
     assert isinstance(payload["storms"], list)
     assert isinstance(payload["equities"], list)
     # cat_bond is dict-or-None, never a list.
     assert payload["cat_bond"] is None or isinstance(payload["cat_bond"], dict)
+    assert isinstance(payload["prediction_markets"], list)
 
 
 def test_quiet_day_returns_empty_lists_and_null_cat_bond(
     db_session: Session,
 ) -> None:
-    """No active storms, no quotes seeded → all empty / null."""
+    """No active storms, no quotes seeded, no prediction markets → all
+    empty / null."""
     payload = todays_changes(db_session, now=_FIXED_NOW)
     assert payload["storms"] == []
     assert payload["equities"] == []
     assert payload["cat_bond"] is None
+    assert payload["prediction_markets"] == []
 
 
 # --- Storm-delta logic ---------------------------------------------------
@@ -310,3 +319,156 @@ def test_cat_bond_is_none_when_change_percent_missing(
 
     payload = todays_changes(db_session, now=_FIXED_NOW)
     assert payload["cat_bond"] is None
+
+
+# --- Prediction market movers --------------------------------------------
+
+
+def _add_prediction_market(
+    db: Session,
+    *,
+    platform: str,
+    ticker: str,
+    title: str,
+    volume_24h: float | None,
+    volume_total: float | None = None,
+    last_updated: datetime | None = None,
+) -> None:
+    """Seed a hurricane PredictionMarket snapshot. Tests use these to
+    drive the prediction-market movers helper without going through
+    either the Kalshi or Polymarket scraper."""
+    db.add(
+        PredictionMarket(
+            platform=platform,
+            ticker=ticker,
+            event_ticker=ticker,
+            title=title,
+            category="hurricane",
+            yes_price=0.5,
+            no_price=0.5,
+            volume_24h=volume_24h,
+            volume_total=volume_total if volume_total is not None else (volume_24h or 0.0),
+            last_updated=last_updated or _FIXED_NOW,
+        )
+    )
+
+
+def test_prediction_market_movers_sorts_by_volume_24h_desc(
+    db_session: Session,
+) -> None:
+    """Top hurricane markets by trailing 24h USDC volume — biggest first.
+    Day 38 added this section to Panel 6 once Polymarket joined Kalshi
+    in Day 37 (Kalshi-alone hurricane markets had been too thin pre-
+    season to be worth narrating)."""
+    _add_prediction_market(
+        db_session,
+        platform="polymarket",
+        ticker="will-a-hurricane-form-by-may-31",
+        title="Will a hurricane form by May 31?",
+        volume_24h=5442.0,
+    )
+    _add_prediction_market(
+        db_session,
+        platform="polymarket",
+        ticker="named-storm-forms-before-hurricane-season",
+        title="Named storm forms before hurricane season?",
+        volume_24h=12000.0,
+    )
+    _add_prediction_market(
+        db_session,
+        platform="kalshi",
+        ticker="KXHURCTOT-26",
+        title="More than 7 Atlantic hurricanes in 2026?",
+        volume_24h=800.0,
+    )
+    db_session.commit()
+
+    payload = todays_changes(db_session, now=_FIXED_NOW)
+    movers = payload["prediction_markets"]
+    assert len(movers) == 3
+    assert [m["ticker"] for m in movers] == [
+        "named-storm-forms-before-hurricane-season",
+        "will-a-hurricane-form-by-may-31",
+        "KXHURCTOT-26",
+    ]
+    # Headline format: "$<vol> on <Platform> — <title>"
+    assert movers[0]["headline"].startswith("$12,000 on Polymarket — ")
+    assert movers[2]["headline"].startswith("$800 on Kalshi — ")
+
+
+def test_prediction_market_movers_skips_below_volume_floor(
+    db_session: Session,
+) -> None:
+    """Vestigial dead-market noise (< $100 in 24h) shouldn't surface
+    as a "what changed today" mover. Floor is editorial; tune if real-
+    season data warrants."""
+    _add_prediction_market(
+        db_session,
+        platform="polymarket",
+        ticker="dead-market",
+        title="Will an extinct hurricane reanimate?",
+        volume_24h=12.5,  # well below the $100 floor
+    )
+    _add_prediction_market(
+        db_session,
+        platform="polymarket",
+        ticker="real-mover",
+        title="Will a hurricane form by May 31?",
+        volume_24h=5442.0,
+    )
+    db_session.commit()
+
+    payload = todays_changes(db_session, now=_FIXED_NOW)
+    tickers = [m["ticker"] for m in payload["prediction_markets"]]
+    assert "dead-market" not in tickers
+    assert "real-mover" in tickers
+
+
+def test_prediction_market_movers_skips_null_volume(
+    db_session: Session,
+) -> None:
+    """A market with no volume_24h reported (Polymarket's volume24hr
+    field has 50.9% coverage per the Day 36 probe) should be skipped
+    rather than surfaced as a $0 mover."""
+    _add_prediction_market(
+        db_session,
+        platform="polymarket",
+        ticker="no-volume-data",
+        title="Will a hurricane reach Cat 4 in 2026?",
+        volume_24h=None,
+    )
+    db_session.commit()
+
+    payload = todays_changes(db_session, now=_FIXED_NOW)
+    assert payload["prediction_markets"] == []
+
+
+def test_prediction_market_movers_caps_at_three(
+    db_session: Session,
+) -> None:
+    """Three is the editorial limit, matching equity movers. A panel
+    full of prediction-market lines would crowd the storm/equity/cat-
+    bond signal."""
+    for i in range(8):
+        _add_prediction_market(
+            db_session,
+            platform="polymarket",
+            ticker=f"market-{i:02d}",
+            title=f"Hurricane question {i}?",
+            volume_24h=float(1000 * (i + 1)),
+        )
+    db_session.commit()
+
+    payload = todays_changes(db_session, now=_FIXED_NOW)
+    movers = payload["prediction_markets"]
+    assert len(movers) == 3
+    # Top three by volume desc: market-07 ($8K), market-06 ($7K), market-05 ($6K)
+    assert [m["ticker"] for m in movers] == ["market-07", "market-06", "market-05"]
+
+
+def test_prediction_market_movers_empty_when_no_hurricane_markets(
+    db_session: Session,
+) -> None:
+    """Off-season: no rows in prediction_markets at all. Returns []."""
+    payload = todays_changes(db_session, now=_FIXED_NOW)
+    assert payload["prediction_markets"] == []

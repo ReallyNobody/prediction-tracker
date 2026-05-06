@@ -78,10 +78,17 @@
       sections.push(buildSection("Cat bond proxy", [buildCatBondLine(catBond)]));
     }
 
+    const predictionMarkets = payload.prediction_markets || [];
+    if (predictionMarkets.length > 0) {
+      sections.push(
+        buildSection("Prediction markets", predictionMarkets.map(buildPredictionMarketLine)),
+      );
+    }
+
     if (sections.length === 0) {
       // Honest empty state. Better than a fake "all unchanged" item.
       emptyEl.innerHTML =
-        '<p class="text-sm">Quiet day — no notable shifts in storms, equities, or cat bond pricing.</p>';
+        '<p class="text-sm">Quiet day — no notable shifts in storms, equities, cat bond pricing, or prediction markets.</p>';
       emptyEl.classList.remove("hidden");
       readoutEl.classList.add("hidden");
       return;
@@ -144,6 +151,26 @@
     const tail = headline.slice(dashIdx).trim();
     return (
       '<span class="font-mono ' + colorClass + '">' + escapeHtml(lead) + "</span> " +
+      '<span class="text-slate-500">' + escapeHtml(tail) + "</span>"
+    );
+  }
+
+  function buildPredictionMarketLine(item) {
+    // Prediction-market headlines come pre-narrated as
+    // "$5,442 on Polymarket — Will a hurricane form by May 31?".
+    // Volume isn't directional (no green/red), so the leading dollar
+    // amount + platform stays neutral mono and the tail (the question
+    // itself) gets the same lighter slate treatment as cat bond /
+    // equity headlines for visual consistency across the panel.
+    const headline = String(item.headline || "");
+    const dashIdx = headline.indexOf("—");
+    if (dashIdx === -1) {
+      return escapeHtml(headline);
+    }
+    const lead = headline.slice(0, dashIdx).trim();
+    const tail = headline.slice(dashIdx).trim();
+    return (
+      '<span class="font-mono text-slate-700">' + escapeHtml(lead) + "</span> " +
       '<span class="text-slate-500">' + escapeHtml(tail) + "</span>"
     );
   }

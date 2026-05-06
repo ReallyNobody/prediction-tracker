@@ -1,7 +1,6 @@
 """Daily change rollup — Panel 6's "What changed today" view.
 
-Pure derived data over what we already persist. Three source tables,
-three categories of change:
+Pure derived data over what we already persist. Four source categories:
 
   * StormObservation — intensity / classification deltas over the
     last 24 hours per active storm.
@@ -11,6 +10,11 @@ three categories of change:
   * TickerQuote — the cat_bond_etf row's change_percent, called out
     separately because it carries different editorial weight than a
     single insurer move.
+  * PredictionMarket — top markets by 24h USDC volume movement, across
+    Kalshi and Polymarket. Day 38 added this section once Polymarket
+    landed (Day 37) — Kalshi-alone markets had been too thin pre-
+    season to be worth narrating, but Polymarket's $300K+ hurricane
+    questions changed the editorial math.
 
 Editorial principle: every line is a single human-readable headline.
 The reader scans the panel in three seconds and knows what shifted.
@@ -19,10 +23,6 @@ is happening, the panel says so honestly.
 
 Intentionally NOT included today:
 
-  * Prediction-market price shifts. The Kalshi snapshot history isn't
-    deep enough yet (Day 7 onward) to compute reliable 24h deltas,
-    and the mid-spring market is too quiet to make noise about. Add
-    in Week 5 if it's earning its space.
   * "New advisories." Largely redundant with storm intensity changes;
     when an advisory triggers a notable forecast shift, it shows up
     in the storm row. Adding it again would inflate the panel.
@@ -40,6 +40,7 @@ from sqlalchemy.orm import Session
 from rmn_dashboard.data.universe import load_universe
 from rmn_dashboard.models import Storm, StormObservation
 from rmn_dashboard.services.equity_quotes import latest_universe_quotes
+from rmn_dashboard.services.markets import latest_hurricane_markets
 
 # Minimum gap between "latest" and "prior" observations for the storm
 # delta query. The 18h floor (vs. exactly 24h) tolerates slight cadence
@@ -51,6 +52,17 @@ _PRIOR_OBSERVATION_FLOOR_HOURS = 18
 # enough to give a sense of the day's mix, few enough to scan.
 _EQUITY_MOVERS_LIMIT = 3
 
+# Cap on prediction-market movers. Same editorial logic as equity:
+# three lines is enough to give the reader a sense of "where money
+# moved on hurricane questions today" without crowding the panel.
+_PREDICTION_MARKET_MOVERS_LIMIT = 3
+
+# Floor below which a 24h volume movement isn't worth a headline. $100
+# avoids reporting vestigial noise on dead markets — the editorial
+# threshold is "actually traded today," not "exists." Easy to tune
+# once we see real-season volume distributions.
+_PREDICTION_MARKET_VOLUME_FLOOR_USD = 100.0
+
 
 def todays_changes(db: Session, *, now: datetime | None = None) -> dict[str, Any]:
     """Return a structured payload of day-over-day changes.
@@ -58,10 +70,11 @@ def todays_changes(db: Session, *, now: datetime | None = None) -> dict[str, Any
     Shape::
 
         {
-          "as_of":   "2026-04-25T17:30:00+00:00",
-          "storms":  [ {kind, name, headline}, ... ],
-          "equities":[ {ticker, name, sector, headline, change_percent}, ... ],
-          "cat_bond":{ ticker, name, headline, change_percent } | None,
+          "as_of":             "2026-04-25T17:30:00+00:00",
+          "storms":            [ {kind, name, headline}, ... ],
+          "equities":          [ {ticker, name, sector, headline, change_percent}, ... ],
+          "cat_bond":          { ticker, name, headline, change_percent } | None,
+          "prediction_markets":[ {platform, ticker, title, volume_24h, headline}, ... ],
         }
 
     The ``now`` kwarg is injectable for deterministic testing.
@@ -79,6 +92,7 @@ def todays_changes(db: Session, *, now: datetime | None = None) -> dict[str, Any
         "storms": _storm_changes(db, now=now),
         "equities": _equity_movers(db, limit=_EQUITY_MOVERS_LIMIT),
         "cat_bond": _cat_bond_change(db),
+        "prediction_markets": _prediction_market_movers(db, limit=_PREDICTION_MARKET_MOVERS_LIMIT),
     }
 
 
@@ -260,3 +274,73 @@ def _cat_bond_change(db: Session) -> dict[str, Any] | None:
             "headline": (f"{row['ticker']} {sign}{change_pct:.2f}% — cat bond proxy."),
         }
     return None
+
+
+# ----- Prediction market movers ------------------------------------------
+
+
+def _prediction_market_movers(db: Session, *, limit: int) -> list[dict[str, Any]]:
+    """Top hurricane prediction markets by trailing 24h USDC volume.
+
+    Day 38: Polymarket joining Kalshi in Day 37 made this section
+    editorially viable — Kalshi-only hurricane markets are usually
+    too thin in the off-season to be worth narrating, but Polymarket's
+    $300K+ pre-season questions ("Named storm forms before hurricane
+    season?") give us real signal year-round.
+
+    We use ``volume_24h`` directly rather than computing a delta from
+    snapshot history — both Kalshi and Polymarket APIs report it as a
+    rolling 24h trade-volume window, which is exactly the signal Panel
+    6 wants. Markets below ``_PREDICTION_MARKET_VOLUME_FLOOR_USD`` are
+    skipped to avoid surfacing dead-market noise as movement.
+
+    Returns a list of headline records ordered by 24h volume desc:
+
+        [
+          {
+            "platform":   "polymarket",
+            "ticker":     "will-a-hurricane-form-by-may-31",
+            "title":      "Will a hurricane form by May 31?",
+            "volume_24h": 5442.0,
+            "headline":   "$5,442 on Polymarket — Will a hurricane form by May 31?",
+          },
+          ...
+        ]
+    """
+    # Pull more than the limit so the volume_24h sort has headroom —
+    # the underlying query orders by volume_total (cumulative), which
+    # is correlated with but not identical to volume_24h.
+    rows = latest_hurricane_markets(db, limit=limit * 4)
+
+    movers: list[dict[str, Any]] = []
+    for row in rows:
+        if row.volume_24h is None:
+            continue
+        if row.volume_24h < _PREDICTION_MARKET_VOLUME_FLOOR_USD:
+            continue
+        movers.append(
+            {
+                "platform": row.platform,
+                "ticker": row.ticker,
+                "title": row.title,
+                "volume_24h": row.volume_24h,
+                "headline": _prediction_market_headline(row.platform, row.title, row.volume_24h),
+            }
+        )
+
+    movers.sort(key=lambda m: m["volume_24h"], reverse=True)
+    return movers[:limit]
+
+
+def _prediction_market_headline(platform: str, title: str, volume_24h: float) -> str:
+    """One-line headline for a prediction-market mover.
+
+    Format: ``"$5,442 on Polymarket — Will a hurricane form by May 31?"``
+
+    Leads with the metric (parallels equity headlines' leading ticker+
+    pct), then platform name capitalized for editorial polish, then
+    em-dash, then the full market title. The title can be long because
+    prediction-market questions are full sentences; we don't truncate
+    server-side and leave wrapping to the panel CSS.
+    """
+    return f"${volume_24h:,.0f} on {platform.capitalize()} — {title}"
