@@ -225,7 +225,7 @@ def get_todays_changes(db: Session = Depends(get_session)) -> dict[str, object]:
              "ticker": "will-a-hurricane-form-by-may-31",
              "title": "Will a hurricane form by May 31?",
              "volume_24h": 5442.0,
-             "headline": "$5,442 on Polymarket — Will a hurricane form by May 31?"},
+             "headline": "$5,442 traded on Polymarket — Will a hurricane form by May 31?"},
             ...
           ]
         }

@@ -157,7 +157,7 @@
 
   function buildPredictionMarketLine(item) {
     // Prediction-market headlines come pre-narrated as
-    // "$5,442 on Polymarket — Will a hurricane form by May 31?".
+    // "$5,442 traded on Polymarket — Will a hurricane form by May 31?".
     // Volume isn't directional (no green/red), so the leading dollar
     // amount + platform stays neutral mono and the tail (the question
     // itself) gets the same lighter slate treatment as cat bond /

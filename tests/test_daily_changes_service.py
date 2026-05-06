@@ -391,9 +391,9 @@ def test_prediction_market_movers_sorts_by_volume_24h_desc(
         "will-a-hurricane-form-by-may-31",
         "KXHURCTOT-26",
     ]
-    # Headline format: "$<vol> on <Platform> — <title>"
-    assert movers[0]["headline"].startswith("$12,000 on Polymarket — ")
-    assert movers[2]["headline"].startswith("$800 on Kalshi — ")
+    # Headline format: "$<vol> traded on <Platform> — <title>"
+    assert movers[0]["headline"].startswith("$12,000 traded on Polymarket — ")
+    assert movers[2]["headline"].startswith("$800 traded on Kalshi — ")
 
 
 def test_prediction_market_movers_skips_below_volume_floor(

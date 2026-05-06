@@ -302,7 +302,7 @@ def _prediction_market_movers(db: Session, *, limit: int) -> list[dict[str, Any]
             "ticker":     "will-a-hurricane-form-by-may-31",
             "title":      "Will a hurricane form by May 31?",
             "volume_24h": 5442.0,
-            "headline":   "$5,442 on Polymarket — Will a hurricane form by May 31?",
+            "headline":   "$5,442 traded on Polymarket — Will a hurricane form by May 31?",
           },
           ...
         ]
@@ -335,12 +335,15 @@ def _prediction_market_movers(db: Session, *, limit: int) -> list[dict[str, Any]
 def _prediction_market_headline(platform: str, title: str, volume_24h: float) -> str:
     """One-line headline for a prediction-market mover.
 
-    Format: ``"$5,442 on Polymarket — Will a hurricane form by May 31?"``
+    Format: ``"$5,442 traded on Polymarket — Will a hurricane form by May 31?"``
 
     Leads with the metric (parallels equity headlines' leading ticker+
-    pct), then platform name capitalized for editorial polish, then
-    em-dash, then the full market title. The title can be long because
-    prediction-market questions are full sentences; we don't truncate
-    server-side and leave wrapping to the panel CSS.
+    pct), with "traded" disambiguating the dollar figure as 24h trading
+    volume (vs. open interest, position size, or total volume to date —
+    all plausible reads of a bare dollar amount in this context). Then
+    platform name capitalized for editorial polish, em-dash, then the
+    full market title. The title can be long because prediction-market
+    questions are full sentences; we don't truncate server-side and
+    leave wrapping to the panel CSS.
     """
-    return f"${volume_24h:,.0f} on {platform.capitalize()} — {title}"
+    return f"${volume_24h:,.0f} traded on {platform.capitalize()} — {title}"
