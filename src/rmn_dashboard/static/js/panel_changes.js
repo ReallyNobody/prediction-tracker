@@ -66,16 +66,34 @@
       sections.push(buildSection("Storms", storms.map(buildStormLine)));
     }
 
+    // Day 41: equities + cat_bond render as a diverging "Risk Tape" —
+    // bars extend left from a center axis for negative moves and right
+    // for positive, sorted spectrum-style (most-negative top → most-
+    // positive bottom). Bar widths share a single max-absolute scale
+    // computed across BOTH equity movers and the cat bond row, so the
+    // cat bond's bar reads correctly relative to the day's biggest
+    // equity move rather than being pinned to 100% width with n=1.
     const equities = payload.equities || [];
-    if (equities.length > 0) {
-      sections.push(
-        buildSection("Top equity movers", equities.map(buildEquityLine)),
-      );
-    }
-
     const catBond = payload.cat_bond;
-    if (catBond) {
-      sections.push(buildSection("Cat bond proxy", [buildCatBondLine(catBond)]));
+    const directionalMoves = collectDirectionalMoves(equities, catBond);
+    if (directionalMoves.maxAbs > 0) {
+      // Axis labels rendered once at the top; section subheaders
+      // re-anchor below for "Top equity movers" then "Cat bond proxy".
+      sections.push(buildRiskTapeAxisHeader());
+      if (equities.length > 0) {
+        sections.push(buildRiskTapeSection(
+          "Top equity movers",
+          sortSpectrum(equities),
+          directionalMoves.maxAbs,
+        ));
+      }
+      if (catBond) {
+        sections.push(buildRiskTapeSection(
+          "Cat bond proxy",
+          [catBond],
+          directionalMoves.maxAbs,
+        ));
+      }
     }
 
     const predictionMarkets = payload.prediction_markets || [];
@@ -99,6 +117,110 @@
     emptyEl.classList.add("hidden");
   }
 
+  // --- Risk Tape (Day 41) ---------------------------------------------
+
+  function collectDirectionalMoves(equities, catBond) {
+    // Single shared max-absolute change_percent across equities + cat
+    // bond, so bar widths are comparable across both sub-sections. We
+    // ignore items with a non-numeric change_percent (shouldn't happen
+    // in practice — server filters those out — but defensive in case
+    // an upstream shape change leaks one through).
+    let maxAbs = 0;
+    for (const e of equities || []) {
+      if (typeof e.change_percent === "number") {
+        maxAbs = Math.max(maxAbs, Math.abs(e.change_percent));
+      }
+    }
+    if (catBond && typeof catBond.change_percent === "number") {
+      maxAbs = Math.max(maxAbs, Math.abs(catBond.change_percent));
+    }
+    return { maxAbs };
+  }
+
+  function sortSpectrum(items) {
+    // Spectrum sort: most-negative first → most-positive last. Stable
+    // for ties so the server's natural ordering breaks them
+    // deterministically.
+    return items.slice().sort(function (a, b) {
+      const ax = typeof a.change_percent === "number" ? a.change_percent : 0;
+      const bx = typeof b.change_percent === "number" ? b.change_percent : 0;
+      return ax - bx;
+    });
+  }
+
+  function buildRiskTapeAxisHeader() {
+    // Axis labels above the first directional section. Single render
+    // even when both equities + cat bond sections show, so the eye
+    // anchors once and reads the whole tape against one ruler.
+    return (
+      '<div class="grid items-center mb-1" ' +
+        'style="grid-template-columns: 110px 1fr 1fr 110px; column-gap: 6px;">' +
+        '<div></div>' +
+        '<div class="text-[10px] text-slate-400 text-right font-mono">← negative</div>' +
+        '<div class="text-[10px] text-slate-400 text-left font-mono">positive →</div>' +
+        '<div></div>' +
+      "</div>"
+    );
+  }
+
+  function buildRiskTapeSection(label, sortedItems, sharedMaxAbs) {
+    const rows = sortedItems.map(function (item) {
+      return buildRiskTapeRow(item, sharedMaxAbs);
+    });
+    return (
+      '<div class="mb-3 last:mb-0">' +
+        '<div class="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1">' +
+          escapeHtml(label) +
+        "</div>" +
+        rows.join("") +
+      "</div>"
+    );
+  }
+
+  function buildRiskTapeRow(item, sharedMaxAbs) {
+    // item: { ticker, name, change_percent, headline, ... }
+    const change = typeof item.change_percent === "number" ? item.change_percent : 0;
+    const isNegative = change < 0;
+    const widthPct = sharedMaxAbs > 0
+      ? (Math.abs(change) / sharedMaxAbs) * 100
+      : 0;
+    const ticker = item.ticker || "";
+    const sign = change >= 0 ? "+" : "";
+    const pctText = sign + change.toFixed(2) + "%";
+    const pctColor = change >= 0 ? "text-emerald-700" : "text-rose-700";
+
+    const bar = '<div class="h-2 bg-slate-800" style="width: ' +
+                widthPct.toFixed(1) + '%"></div>';
+
+    const negCell = isNegative
+      ? '<div class="flex justify-end pr-1 border-r border-slate-300">' + bar + "</div>"
+      : '<div class="border-r border-slate-300"></div>';
+    const posCell = isNegative
+      ? '<div></div>'
+      : '<div class="flex justify-start pl-1">' + bar + "</div>";
+
+    const leftLabel = isNegative
+      ? '<span class="font-mono text-slate-900 text-right text-sm">' +
+          escapeHtml(ticker) + ' <span class="' + pctColor + '">' + escapeHtml(pctText) + "</span>" +
+        "</span>"
+      : "<span></span>";
+    const rightLabel = isNegative
+      ? "<span></span>"
+      : '<span class="font-mono text-slate-900 text-sm">' +
+          '<span class="' + pctColor + '">' + escapeHtml(pctText) + "</span> " + escapeHtml(ticker) +
+        "</span>";
+
+    return (
+      '<div class="grid items-center py-1" ' +
+        'style="grid-template-columns: 110px 1fr 1fr 110px; column-gap: 6px;">' +
+        leftLabel +
+        negCell +
+        posCell +
+        rightLabel +
+      "</div>"
+    );
+  }
+
   function buildSection(label, lines) {
     return (
       '<div class="mb-3 last:mb-0">' +
@@ -120,40 +242,13 @@
     return escapeHtml(item.headline || item.name || "Storm change");
   }
 
-  function buildEquityLine(item) {
-    // Equity headlines come pre-narrated as "UVE +4.20% — name".
-    // Color the leading ticker+pct based on the change_percent sign.
-    const change = item.change_percent;
-    const colorClass = changeColor(change);
-    const headline = String(item.headline || "");
-    // Split on the em-dash separator the server uses: "TICKER ±%.%% — name".
-    const dashIdx = headline.indexOf("—");
-    if (dashIdx === -1) {
-      return escapeHtml(headline);
-    }
-    const lead = headline.slice(0, dashIdx).trim();
-    const tail = headline.slice(dashIdx).trim();  // includes the em-dash
-    return (
-      '<span class="font-mono ' + colorClass + '">' + escapeHtml(lead) + "</span> " +
-      '<span class="text-slate-500">' + escapeHtml(tail) + "</span>"
-    );
-  }
-
-  function buildCatBondLine(item) {
-    const change = item.change_percent;
-    const colorClass = changeColor(change);
-    const headline = String(item.headline || "");
-    const dashIdx = headline.indexOf("—");
-    if (dashIdx === -1) {
-      return escapeHtml(headline);
-    }
-    const lead = headline.slice(0, dashIdx).trim();
-    const tail = headline.slice(dashIdx).trim();
-    return (
-      '<span class="font-mono ' + colorClass + '">' + escapeHtml(lead) + "</span> " +
-      '<span class="text-slate-500">' + escapeHtml(tail) + "</span>"
-    );
-  }
+  // Day 41: buildEquityLine and buildCatBondLine were removed when the
+  // text-based equity/cat-bond headlines were replaced by the diverging
+  // Risk Tape rows. Equity and cat bond rendering now flows through
+  // buildRiskTapeRow / buildRiskTapeSection above. Prediction-market
+  // rendering stays in the original buildSection + buildPredictionMarketLine
+  // pattern below since volume isn't directional and a center-axis
+  // treatment would mis-encode the data.
 
   function buildPredictionMarketLine(item) {
     // Prediction-market headlines come pre-narrated as
@@ -175,11 +270,12 @@
     );
   }
 
-  function changeColor(change) {
-    if (typeof change !== "number") return "text-slate-700";
-    if (change >= 0) return "text-emerald-600";
-    return "text-rose-600";
-  }
+  // Day 41 removed the standalone changeColor helper. It was used only
+  // by buildEquityLine / buildCatBondLine, both of which were replaced
+  // by the Risk Tape renderer (which inlines the same emerald/rose
+  // class choice in buildRiskTapeRow). Kept as a comment marker so a
+  // future text-fallback variant can re-introduce it without
+  // re-deriving the convention.
 
   // --- Helpers ----------------------------------------------------------
 
