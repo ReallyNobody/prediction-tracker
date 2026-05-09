@@ -42,12 +42,13 @@
     // return zero storms; that's a non-event for Panel 2 — we just
     // skip the highlight in that case.
     //
-    // The sectors filter excludes cat_bond_etf and pc_index — those
-    // entries belong in Panel 3 ("Hurricane risk capital"), and the
-    // per-name equity grid would feel inconsistent if a fund tile sat
-    // among individual-company tiles.
+    // The sectors filter excludes cat_bond_etf, pc_index, and the
+    // benchmark XLU — those entries belong elsewhere (cat_bond_etf and
+    // pc_index in Panel 3; benchmark fuels the vs-XLU spread badge but
+    // never appears as its own tile). Day 40 added "lng" — Gulf Coast
+    // LNG export infrastructure — alongside utility.
     const quotesPromise = fetch(
-      "/api/v1/quotes/hurricane-universe?sectors=insurer,reinsurer,homebuilder,utility",
+      "/api/v1/quotes/hurricane-universe?sectors=insurer,reinsurer,homebuilder,utility,lng",
       { headers: { Accept: "application/json" } },
     ).then(function (r) {
       if (!r.ok) {
@@ -218,6 +219,7 @@
         '<div class="mt-1 flex items-baseline justify-between">' +
           priceBlock +
         "</div>" +
+        vsXluBadgeHtml(entry.quote) +
       "</div>"
     );
   }
@@ -252,11 +254,35 @@
       reinsurer: "re",
       homebuilder: "hb",
       utility: "util",
+      lng: "lng",
     }[sector] || sector;
     return (
       '<span class="text-[10px] uppercase tracking-wide text-slate-400 font-mono">' +
         escapeHtml(label) +
       "</span>"
+    );
+  }
+
+  function vsXluBadgeHtml(quote) {
+    // Day 40: utility / LNG tiles get a "vs XLU" sub-line under the
+    // primary change badge, surfacing name-specific move vs sector
+    // benchmark. Server emits vs_xlu_change_percent only when both the
+    // ticker quote and XLU's quote have numeric change_percent values;
+    // when missing, this returns an empty string and the tile renders
+    // exactly as before (no layout shift on benchmark outage).
+    if (!quote || typeof quote.vs_xlu_change_percent !== "number") {
+      return "";
+    }
+    const spread = quote.vs_xlu_change_percent;
+    const sign = spread >= 0 ? "+" : "";
+    const colorClass = spread >= 0 ? "text-emerald-600" : "text-rose-600";
+    return (
+      '<div class="text-[10px] font-mono text-slate-400 mt-0.5">' +
+        '<span class="' + colorClass + '">' +
+          escapeHtml(sign + spread.toFixed(2) + "%") +
+        "</span>" +
+        ' vs XLU' +
+      "</div>"
     );
   }
 

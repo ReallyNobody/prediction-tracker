@@ -56,21 +56,25 @@ def test_bundled_universe_loads_cleanly() -> None:
     """
     universe = load_universe()
     assert isinstance(universe, Universe)
-    # Sanity: we expect ~37 tickers in the launch roster (35 equities +
-    # 1 cat bond ETF + 1 P&C insurance index ETF). Don't pin the exact
-    # number — that becomes a friction tax on legitimate edits.
+    # Sanity: we expect ~40 tickers in the launch roster (37 equities +
+    # 1 cat bond ETF + 1 P&C insurance index ETF + 1 utility benchmark).
+    # Don't pin the exact number — that becomes a friction tax on
+    # legitimate edits.
     assert 20 <= len(universe.tickers) <= 80
-    # All six sectors represented at least once.
-    # - insurer/reinsurer/homebuilder/utility drive Panel 2 filter pills.
+    # All eight sectors represented at least once.
+    # - insurer/reinsurer/homebuilder/utility/lng drive Panel 2 filter pills.
     # - cat_bond_etf and pc_index drive Panel 3 (Hurricane risk capital).
+    # - benchmark (XLU) is invisible — it fuels Panel 2's vs-XLU spread badge.
     sectors = {entry.sector for entry in universe.tickers}
     assert sectors == {
         "insurer",
         "reinsurer",
         "homebuilder",
         "utility",
+        "lng",
         "cat_bond_etf",
         "pc_index",
+        "benchmark",
     }
 
 
@@ -126,6 +130,45 @@ def test_bundled_pc_indexes_have_empty_key_states() -> None:
     for entry in filter_by_sector(universe, ["pc_index"]):
         assert entry.key_states == (), (
             f"pc_index {entry.ticker} has key_states={entry.key_states}; "
+            "should be empty by editorial convention"
+        )
+
+
+def test_bundled_universe_includes_lng_infrastructure() -> None:
+    """Day 40: Panel 2's LNG filter pill needs at least one lng entry.
+    Cheniere (LNG) is the launch anchor — pure-play Gulf Coast LNG
+    exporter. Lock it down so a future YAML cleanup that accidentally
+    drops the row doesn't silently blank the LNG filter in prod.
+    """
+    universe = load_universe()
+    lngs = filter_by_sector(universe, ["lng"])
+    assert lngs, "expected at least one lng entry in the bundled universe"
+    tickers = {entry.ticker for entry in lngs}
+    assert "LNG" in tickers
+
+
+def test_bundled_universe_includes_xlu_benchmark() -> None:
+    """Day 40: Panel 2's vs-XLU spread badge requires the XLU benchmark
+    in the universe. Lock it down so a YAML cleanup that drops the row
+    doesn't silently turn off every utility / LNG tile's spread badge
+    in prod.
+    """
+    universe = load_universe()
+    benchmarks = filter_by_sector(universe, ["benchmark"])
+    assert benchmarks, "expected XLU benchmark in the bundled universe"
+    tickers = {entry.ticker for entry in benchmarks}
+    assert "XLU" in tickers
+
+
+def test_bundled_benchmarks_have_empty_key_states() -> None:
+    """Editorial rule: sector ETF benchmarks are baskets and don't pin
+    to a single state — same convention as cat_bond_etf, pc_index, and
+    reinsurer entries.
+    """
+    universe = load_universe()
+    for entry in filter_by_sector(universe, ["benchmark"]):
+        assert entry.key_states == (), (
+            f"benchmark {entry.ticker} has key_states={entry.key_states}; "
             "should be empty by editorial convention"
         )
 

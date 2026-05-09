@@ -21,7 +21,9 @@
 # Field definitions:
 #   ticker                 NYSE / Nasdaq symbol.
 #   name                   Common company name.
-#   sector                 insurer | reinsurer | homebuilder | utility
+#   sector                 insurer | reinsurer | homebuilder |
+#                          utility | lng | cat_bond_etf | pc_index |
+#                          benchmark
 #   cik                    SEC EDGAR Central Index Key. Null here —
 #                          ingest resolves from
 #                          https://www.sec.gov/files/company_tickers.json
@@ -37,13 +39,15 @@
 #                          badge.
 #   notes                  One-line tooltip copy.
 #
-# Tickers in this revision: 37
+# Tickers in this revision: 40
 #   - 11 insurers (3 FL-specialist + 8 national/commercial)
 #   -  6 reinsurers
 #   -  8 homebuilders
-#   - 10 utilities
+#   -  9 utilities (Day 40 moved SRE to LNG)
+#   -  3 LNG export infrastructure (Day 40)
 #   -  1 cat bond ETF (Panel 3)
 #   -  1 P&C insurance index ETF (Panel 3)
+#   -  1 benchmark ETF (XLU — Day 40, drives Panel 2 utility-spread badge)
 # =====================================================================
 
 version: 1
@@ -309,11 +313,11 @@ tickers:
 
   - ticker: SRE
     name: Sempra
-    sector: utility
+    sector: lng
     cik: null
-    key_states: [TX, CA]
-    hurricane_relevance: medium
-    notes: Oncor (TX transmission) + CA gas; TX is the hurricane slice.
+    key_states: [LA, TX]
+    hurricane_relevance: high
+    notes: Cameron LNG (LA) + Port Arthur LNG (TX) via Sempra Infrastructure; Cameron offline ~3 months after Hurricane Laura 2020.
 
   - ticker: PEG
     name: Public Service Enterprise Group
@@ -338,6 +342,40 @@ tickers:
     key_states: [PA, KY, VA, RI]
     hurricane_relevance: low
     notes: PA + KY + RI; peripheral hurricane exposure.
+
+  # --- LNG export infrastructure (Gulf Coast) -------------------------
+  #
+  # Day 40 carved LNG out from "utility" because the editorial story is
+  # different: a hurricane shutting Sabine Pass or Cameron LNG moves
+  # global gas prices through TTF / JKM / Henry Hub spreads, not just
+  # the affected state's regulated rate base. The three names below
+  # cover the three operating Gulf Coast LNG export franchises. SRE
+  # was previously in this YAML as a utility (Oncor + CA gas) — moved
+  # to the lng sector with notes refreshed to focus on Cameron / Port
+  # Arthur LNG, which are the actual hurricane-exposure story for the
+  # name. Oncor (TX transmission) + SDG&E (CA gas) remain in Sempra's
+  # consolidated book but aren't the storm story.
+  #
+  # key_states are the terminal locations. ET's primary exposure today
+  # is its Gulf Coast pipeline network rather than its Lake Charles LNG
+  # project (still pre-operational on this revision date), so its
+  # relevance is medium rather than high.
+
+  - ticker: LNG
+    name: Cheniere Energy
+    sector: lng
+    cik: null
+    key_states: [LA, TX]
+    hurricane_relevance: high
+    notes: Sabine Pass (LA) + Corpus Christi (TX) — largest US LNG exporter. Direct landfall typically takes terminals offline 1-3 weeks.
+
+  - ticker: ET
+    name: Energy Transfer
+    sector: lng
+    cik: null
+    key_states: [LA, TX]
+    hurricane_relevance: medium
+    notes: Lake Charles LNG (pre-operational) + Gulf Coast pipeline network. Pipeline disruption is the storm exposure today.
 
   # --- Cat bond ETFs --------------------------------------------------
   #
@@ -386,3 +424,26 @@ tickers:
     key_states: []
     hurricane_relevance: high
     notes: Tracks the KBW Nasdaq P&C Insurance Index — listed P&C carriers, hurricane-exposed.
+
+  # --- Benchmark for Panel 2 utility-spread badge --------------------
+  #
+  # Day 40: XLU (Utilities Select Sector SPDR) is the broad utility-
+  # sector ETF. Panel 2 computes each utility / LNG ticker's daily
+  # change-percent minus XLU's, surfacing the result as a small "vs
+  # XLU" badge on the tile. Editorial intent: separate name-specific
+  # storm signal from broad sector sentiment, so a 4% drop in ETR on
+  # a day XLU is also down 3.5% reads as 0.5% of name-specific risk
+  # rather than panic.
+  #
+  # Editorial rule: never appears as a Panel 2 tile (sector="benchmark"
+  # is filtered out alongside cat_bond_etf and pc_index). Empty
+  # key_states. The yfinance ingest treats XLU like any other ticker
+  # so we always have a fresh quote when the page loads.
+
+  - ticker: XLU
+    name: Utilities Select Sector SPDR
+    sector: benchmark
+    cik: null
+    key_states: []
+    hurricane_relevance: high
+    notes: Broad utility-sector ETF; Panel 2 computes utility / LNG ticker spreads against XLU's daily move.

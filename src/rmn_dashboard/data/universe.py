@@ -113,7 +113,29 @@ _VALID_US_STATES: frozenset[str] = frozenset(
 # publishes a Global Reinsurance Index but its investable trackers are
 # foreign-listed and thin — so reinsurance stays as the individual
 # tickers in the equity universe (RNR, EG, ACGL, AXS, MKL, HG).
-Sector = Literal["insurer", "reinsurer", "homebuilder", "utility", "cat_bond_etf", "pc_index"]
+# Day 40 added "lng" — Gulf Coast LNG export infrastructure (Cheniere /
+# Sempra Infrastructure / Energy Transfer). Editorially distinct from
+# regulated utilities: a hurricane that shuts a Cameron LNG terminal
+# moves global gas prices, not just the local rate base. Kept as its
+# own sector so Panel 2 can group / filter / badge LNG separately and
+# the new XLU-spread computation only applies to operationally-exposed
+# energy names (utility + lng), not to insurers or homebuilders.
+#
+# Day 40 also added "benchmark" — the XLU sector ETF acts as the spread
+# baseline for utility / LNG ticker performance. Same data-shape as
+# cat_bond_etf and pc_index (rides the yfinance ingest plumbing) but
+# editorially invisible: never appears as a Panel 2 tile, only fuels
+# the "vs XLU" spread badge on utility / LNG rows.
+Sector = Literal[
+    "insurer",
+    "reinsurer",
+    "homebuilder",
+    "utility",
+    "lng",
+    "cat_bond_etf",
+    "pc_index",
+    "benchmark",
+]
 Relevance = Literal["high", "medium", "low"]
 
 

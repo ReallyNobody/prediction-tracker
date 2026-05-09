@@ -160,7 +160,7 @@ def test_index_wires_up_equities_panel(client: TestClient) -> None:
     loader script.
 
     Smoke test only — doesn't exercise the JS. ``panel_equities.js``
-    targets each of these IDs by string, and the four sector pills'
+    targets each of these IDs by string, and the sector pills'
     ``data-sector`` values must match the sector Literal in
     ``data/universe.py`` exactly. Losing any of them silently breaks
     the panel.
@@ -171,9 +171,9 @@ def test_index_wires_up_equities_panel(client: TestClient) -> None:
     assert 'id="equities-empty"' in body
     assert 'id="equities-as-of"' in body
     # Sector filter pills — values must match the Sector Literal in
-    # data/universe.py, plus an "all" reset pill.
+    # data/universe.py, plus an "all" reset pill. Day 40 added "lng".
     assert 'id="equities-sector-pills"' in body
-    for sector in ("all", "insurer", "reinsurer", "homebuilder", "utility"):
+    for sector in ("all", "insurer", "reinsurer", "homebuilder", "utility", "lng"):
         assert f'data-sector="{sector}"' in body, f"missing sector pill: {sector}"
     # Loader script.
     assert "/static/js/panel_equities.js" in body

@@ -101,6 +101,16 @@ def _mock_quote_for(entry: UniverseEntry) -> dict[str, float | int | None]:
         # straddle that range. Day 20 added pc_index alongside cat bond
         # ETFs in Panel 3 ("Hurricane risk capital").
         "pc_index": 90.0,
+        # Day 40: Gulf Coast LNG names span a wide range — Cheniere
+        # (LNG) ~$200, Sempra (SRE) ~$80, Energy Transfer (ET) ~$20.
+        # A base of 110 with the 0.5x-1.8x multiplier produces $55-200
+        # which straddles the realistic range without anchoring too
+        # tight to any one name's actual recent price.
+        "lng": 110.0,
+        # Day 40: XLU (Utilities Select Sector SPDR) has traded $60-85
+        # over the last few years; 75 base × 0.5-1.8 multiplier yields
+        # $38-135 which comfortably spans realistic outcomes.
+        "benchmark": 75.0,
     }[entry.sector]
 
     # Spread the price 0.5x-1.8x the sector base, deterministic per ticker.

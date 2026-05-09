@@ -84,6 +84,18 @@ def _isoformat(value: datetime | None) -> str | None:
     return value.isoformat()
 
 
+# Day 40: which sectors get an XLU-spread badge attached to their
+# quote. Operationally-exposed energy names only — insurers and
+# homebuilders ride different risk drivers and a "vs utility ETF"
+# spread reads as noise on those tiles.
+_XLU_SPREAD_SECTORS: frozenset[str] = frozenset({"utility", "lng"})
+
+# Day 40: the benchmark ticker itself. Lifted into a constant so the
+# service layer, the Panel 2 JS exclusion list, and any future
+# Phase 2 signal (e.g. a credit-spread proxy) read from one place.
+_XLU_BENCHMARK_TICKER = "XLU"
+
+
 def latest_universe_quotes(
     db: Session,
     *,
@@ -107,6 +119,7 @@ def latest_universe_quotes(
               "change_amount": 1.45,
               "change_percent": 7.25,
               "as_of": "2026-04-24T17:00:00+00:00",
+              "vs_xlu_change_percent": 0.95,   # utility / lng only
               ...
           } | null    # null if no scrape has produced a row yet
         }
@@ -119,6 +132,13 @@ def latest_universe_quotes(
     ``sectors`` and ``states`` are independent filters; passing both
     intersects them. ``states=[]`` is treated as "no state filter," not
     "filter to nothing" — same convention as ``tickers_for_states``.
+
+    Day 40: utility / LNG rows carry an extra ``vs_xlu_change_percent``
+    field (the ticker's daily change minus XLU's). Computed only when
+    both quotes exist and both have a numeric ``change_percent``;
+    otherwise the field is omitted (UI hides the badge). XLU itself is
+    fetched independently of the ``sectors`` filter so the spread can
+    still be computed when the caller filters down to ``[utility]``.
     """
     if universe is None:
         universe = load_universe()
@@ -142,6 +162,10 @@ def latest_universe_quotes(
     if not target_tickers:
         return []
 
+    # Day 40: also pull XLU even if it isn't in the filtered set, so we
+    # can compute utility / lng spreads regardless of caller filters.
+    quote_ticker_set = set(target_tickers) | {_XLU_BENCHMARK_TICKER}
+
     # Pull the latest TickerQuote per ticker for the targeted set.
     latest_per_ticker = _latest_quote_subquery()
     stmt = (
@@ -151,9 +175,20 @@ def latest_universe_quotes(
             (TickerQuote.ticker == latest_per_ticker.c.ticker)
             & (TickerQuote.as_of == latest_per_ticker.c.max_ts),
         )
-        .where(TickerQuote.ticker.in_(target_tickers))
+        .where(TickerQuote.ticker.in_(quote_ticker_set))
     )
     quotes_by_ticker = {q.ticker: q for q in db.scalars(stmt).all()}
+
+    # XLU baseline for the spread — None when the benchmark hasn't been
+    # ingested yet (fresh DB / pre-launch / yfinance outage). The spread
+    # field is then omitted on every tile, which the UI renders as just
+    # the regular change badge with no "vs XLU" sub-line.
+    xlu_quote = quotes_by_ticker.get(_XLU_BENCHMARK_TICKER)
+    xlu_change_pct = (
+        xlu_quote.change_percent
+        if xlu_quote is not None and xlu_quote.change_percent is not None
+        else None
+    )
 
     # Compose the response in universe order so the UI sees a stable
     # roster across renders (keeps filter-pill toggles from re-shuffling
@@ -161,6 +196,15 @@ def latest_universe_quotes(
     payload: list[dict[str, Any]] = []
     for entry in entries:
         quote = quotes_by_ticker.get(entry.ticker)
+        quote_payload = _quote_to_dict(quote) if quote is not None else None
+        if (
+            quote_payload is not None
+            and entry.sector in _XLU_SPREAD_SECTORS
+            and quote is not None
+            and quote.change_percent is not None
+            and xlu_change_pct is not None
+        ):
+            quote_payload["vs_xlu_change_percent"] = quote.change_percent - xlu_change_pct
         payload.append(
             {
                 "ticker": entry.ticker,
@@ -169,7 +213,7 @@ def latest_universe_quotes(
                 "hurricane_relevance": entry.hurricane_relevance,
                 "key_states": list(entry.key_states),
                 "notes": entry.notes,
-                "quote": _quote_to_dict(quote) if quote is not None else None,
+                "quote": quote_payload,
             }
         )
     return payload

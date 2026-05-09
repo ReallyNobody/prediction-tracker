@@ -163,6 +163,8 @@ def test_quote_payload_shape(db_session: Session, small_universe) -> None:
     result = latest_universe_quotes(db_session, universe=small_universe)
     uve = next(r for r in result if r["ticker"] == "UVE")
     quote = uve["quote"]
+    # Insurer tickers don't carry the Day 40 vs-XLU spread field even when
+    # XLU has a quote — the spread is operationally-exposed-energy only.
     assert set(quote.keys()) == {
         "last_price",
         "prior_close",
@@ -175,3 +177,44 @@ def test_quote_payload_shape(db_session: Session, small_universe) -> None:
         "as_of",
     }
     assert isinstance(quote["as_of"], str)  # ISO-8601 not raw datetime
+
+
+def test_vs_xlu_spread_attached_to_utility_not_insurer(db_session: Session, small_universe) -> None:
+    """Day 40: utility / LNG tickers carry vs_xlu_change_percent when
+    both their quote and XLU's quote have numeric change_percent values.
+    Insurer tickers never get the field — operationally-exposed-energy
+    only by editorial design.
+    """
+    # NEE (utility) up 1.5%, UVE (insurer) up 4.0%, XLU up 0.5%.
+    # Expected spread on NEE: 1.5 - 0.5 = 1.0%. UVE has no spread field.
+    _add_quote(db_session, "NEE", last_price=80.0, prior_close=78.8177)
+    _add_quote(db_session, "UVE", last_price=20.8, prior_close=20.0)
+    _add_quote(db_session, "XLU", last_price=72.0, prior_close=71.6418)
+    db_session.commit()
+
+    result = latest_universe_quotes(db_session, universe=small_universe)
+    by_ticker = {r["ticker"]: r for r in result}
+
+    # Utility — spread present, computed correctly to 2 decimals.
+    nee_quote = by_ticker["NEE"]["quote"]
+    assert "vs_xlu_change_percent" in nee_quote
+    assert round(nee_quote["vs_xlu_change_percent"], 2) == 1.0
+
+    # Insurer — spread field absent.
+    uve_quote = by_ticker["UVE"]["quote"]
+    assert "vs_xlu_change_percent" not in uve_quote
+
+
+def test_vs_xlu_spread_omitted_when_benchmark_quote_missing(
+    db_session: Session, small_universe
+) -> None:
+    """If XLU has no quote yet (fresh DB / yfinance outage / pre-launch),
+    every utility / LNG row simply omits the vs_xlu_change_percent field
+    and the UI hides the badge. No fabricated zero, no None placeholder.
+    """
+    _add_quote(db_session, "NEE", last_price=80.0, prior_close=78.8177)
+    db_session.commit()
+
+    result = latest_universe_quotes(db_session, universe=small_universe)
+    nee_quote = next(r for r in result if r["ticker"] == "NEE")["quote"]
+    assert "vs_xlu_change_percent" not in nee_quote
