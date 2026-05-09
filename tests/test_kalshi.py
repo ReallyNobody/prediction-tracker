@@ -287,6 +287,71 @@ def test_client_429_retry_exhausts_and_raises() -> None:
     assert sleeps == [1, 2, 4, 8]
 
 
+def test_client_honors_retry_after_header_on_429() -> None:
+    """Day 42: when Kalshi sends a Retry-After header on 429, the
+    client should use that value for the next backoff instead of the
+    default 2**attempt. Authoritative beats heuristic."""
+    sleeps: list[float] = []
+    calls: list[int] = []
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        if len(calls) == 1:
+            # Kalshi tells us "wait 5 seconds" — should override the
+            # 2**0 = 1s default for this attempt.
+            return httpx.Response(
+                429,
+                json={"error": "too_many_requests"},
+                headers={"Retry-After": "5"},
+            )
+        return httpx.Response(200, json={"markets": []})
+
+    client, _ = _make_client(handler, sleep_fn=sleeps.append)
+    result = client.get("/markets")
+
+    assert result == {"markets": []}
+    assert sleeps == [5.0]
+
+
+def test_client_caps_backoff_at_max_seconds() -> None:
+    """Day 42: with the higher MAX_429_RETRIES=6 default, attempt 5
+    would naively want 2**5 = 32s of backoff. The MAX_BACKOFF_SECONDS
+    cap (30s) keeps the worst-case wait bounded."""
+    sleeps: list[float] = []
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(429, json={"error": "too_many_requests"})
+
+    client, _ = _make_client(handler, sleep_fn=sleeps.append, max_429_retries=6)
+    with pytest.raises(httpx.HTTPStatusError):
+        client.get("/markets")
+
+    # Sequence: 1, 2, 4, 8, 16, then 32 capped to 30.
+    assert sleeps == [1, 2, 4, 8, 16, 30]
+
+
+def test_client_caps_retry_after_header_at_max_seconds() -> None:
+    """Day 42: a malicious or misconfigured Retry-After of 600s
+    shouldn't park our scheduler thread for ten minutes. The cap
+    applies to header-supplied values too."""
+    sleeps: list[float] = []
+    calls: list[int] = []
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        if len(calls) == 1:
+            return httpx.Response(
+                429,
+                json={"error": "too_many_requests"},
+                headers={"Retry-After": "600"},
+            )
+        return httpx.Response(200, json={"markets": []})
+
+    client, _ = _make_client(handler, sleep_fn=sleeps.append)
+    client.get("/markets")
+    assert sleeps == [30.0]
+
+
 def test_client_does_not_retry_on_non_429_error() -> None:
     """A 500 (or any non-429 error) must raise on the first attempt — no
     backoff, no extra calls."""

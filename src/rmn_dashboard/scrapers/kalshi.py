@@ -57,10 +57,22 @@ HURRICANE_SERIES: tuple[str, ...] = (
 )
 
 # Rate-limit tunables — Kalshi will 429 on bursts of a few back-to-back calls.
-# Matches ``scripts/probe_kalshi.py``: a short courtesy sleep between series,
-# plus exponential backoff (1s, 2s, 4s, 8s) on any 429 inside the client.
-PER_SERIES_SLEEP = 0.5
-MAX_429_RETRIES = 4
+#
+# Day 42: bumped after prod 429 storms where the previous 1s/2s/4s/8s
+# backoff repeatedly failed all four attempts. Kalshi's rate-limit
+# window is clearly wider than 8 seconds. Two changes:
+#
+#   1. PER_SERIES_SLEEP: 0.5s → 2.0s. Inter-series pacing now sits
+#      well above whatever burst threshold Kalshi enforces.
+#   2. MAX_429_RETRIES: 4 → 6, with a per-attempt cap of MAX_BACKOFF_SECONDS.
+#      Effective sequence: 1, 2, 4, 8, 16, 30s — up to ~61s of total
+#      patience per call, which lets the rate-limit window roll over
+#      cleanly instead of churning through guaranteed-fail retries.
+#   3. Retry-After honored when present. Kalshi may not send it, but
+#      if they do, it's authoritative and we should respect it.
+PER_SERIES_SLEEP = 2.0
+MAX_429_RETRIES = 6
+MAX_BACKOFF_SECONDS = 30.0
 
 
 class KalshiConfigError(RuntimeError):
@@ -201,9 +213,24 @@ class KalshiClient:
             response = self._http_client.get(url, params=params, headers=headers)
 
             if response.status_code == 429 and attempt < self._max_429_retries:
-                wait = 2**attempt
+                # Day 42: prefer Retry-After if Kalshi provides it (it's
+                # authoritative — they know exactly when their rate-limit
+                # window resets). Otherwise fall back to capped exponential
+                # backoff. The cap (MAX_BACKOFF_SECONDS) keeps the worst-
+                # case wait bounded; the higher MAX_429_RETRIES keeps the
+                # total retry budget high enough to ride out windows that
+                # are wider than 8 seconds.
+                retry_after_header = response.headers.get("Retry-After")
+                wait: float
+                if retry_after_header is not None:
+                    try:
+                        wait = min(float(retry_after_header), MAX_BACKOFF_SECONDS)
+                    except ValueError:
+                        wait = min(2.0**attempt, MAX_BACKOFF_SECONDS)
+                else:
+                    wait = min(2.0**attempt, MAX_BACKOFF_SECONDS)
                 logger.warning(
-                    "Kalshi GET %s → 429; backing off %ss (attempt %d/%d)",
+                    "Kalshi GET %s → 429; backing off %.1fs (attempt %d/%d)",
                     path,
                     wait,
                     attempt + 1,
