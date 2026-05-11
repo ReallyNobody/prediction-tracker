@@ -51,13 +51,15 @@
   // --- Tier styling -----------------------------------------------------
 
   // Tier → color hex. Single source of truth for the cell tinting +
-  // sparkline stroke. Quiet uses a neutral slate so the cell doesn't
-  // shout when nothing is happening.
+  // sparkline stroke. Day 44 re-tone for the cream brand palette —
+  // values match the --rmn-tier-* CSS variables in base.html. Mirroring
+  // them in JS (rather than reading the computed CSS values) keeps the
+  // SVG sparkline rendering stable across browsers + theme contexts.
   const TIER_COLOR = {
-    quiet: "#888780",
-    watching: "#F0997B",
-    active: "#D85A30",
-    severe: "#A32D2D",
+    quiet: "#888780",     // warm slate
+    watching: "#C47B5F",  // terracotta — matches --rmn-divider
+    active: "#A0533D",    // deeper rust
+    severe: "#7A2E1E",    // deep brick
   };
   const TIER_FALLBACK_COLOR = TIER_COLOR.quiet;
 
@@ -75,19 +77,32 @@
 
     const toneColor = tierColor(tone);
 
+    // Day 44: relabel "Tone today" → "Risk today · 14-day context".
+    // The word that follows (Watching / Active / Severe) is a current-
+    // state tier, not a trend direction — the 14-day sparklines below
+    // are the trend element. The label honestly carries both: "Risk
+    // today" for the word, "14-day context" for the cells underneath.
+    //
+    // Tone word renders in Source Serif 4 to echo the page-title
+    // heading family, giving the band a typographic anchor that pairs
+    // with the cream surface and terracotta accents.
     tapeEl.innerHTML =
       '<div class="flex items-center justify-between mb-3 flex-wrap gap-2">' +
-        '<div class="flex items-baseline gap-3">' +
-          '<div class="text-[10px] uppercase tracking-wider text-slate-400">Tone today</div>' +
-          '<div class="text-lg font-medium" style="color: ' + toneColor + '">' +
+        '<div class="flex items-baseline gap-3 flex-wrap">' +
+          '<div class="text-[10px] uppercase tracking-wider" ' +
+               'style="color: #888780;">Risk today</div>' +
+          '<div class="text-xl font-medium" ' +
+               'style="color: ' + toneColor + '; ' +
+                      'font-family: \'Source Serif 4\', Georgia, serif; ' +
+                      'line-height: 1;">' +
             escapeHtml(toneLabel) +
           "</div>" +
+          '<div class="text-[10px] italic" style="color: #888780;">' +
+            '· 14-day context' +
+          "</div>" +
         "</div>" +
-        '<div class="text-[10px] text-slate-400 font-mono">' +
+        '<div class="text-[10px] font-mono" style="color: #888780;">' +
           (asOf ? "as of " + escapeHtml(asOf) : "") +
-          (payload.history_days
-            ? " · " + escapeHtml(String(payload.history_days)) + "d history"
-            : "") +
         "</div>" +
       "</div>" +
       '<div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5">' +
@@ -104,16 +119,23 @@
 
   function buildCell(cell) {
     const color = tierColor(cell.tier);
-    const valueColor = cell.tier === "quiet" ? "#D3D1C7" : color;
+    // Day 44: white card on cream background, with the tier color as a
+    // 3px left border accent. Quiet cells use warm slate as the value
+    // color so "Calm" doesn't shout; non-quiet cells colorize the
+    // value word to match the tier border for visual cohesion.
+    const valueColor = cell.tier === "quiet" ? "#5F5E5A" : color;
     const sparkline = (cell.history && cell.history.length > 0)
       ? buildSparkline(cell.history, color)
       : "";
 
     return (
-      '<div class="rounded-r" ' +
-        'style="background: rgba(232, 229, 221, 0.05); ' +
-              'border-left: 2px solid ' + color + '; padding: 10px 12px;">' +
-        '<div class="text-[10px] uppercase tracking-wider text-slate-400 mb-1">' +
+      '<div ' +
+        'style="background: #FFFFFF; ' +
+              'border: 1px solid #E8E2D8; ' +
+              'border-left: 3px solid ' + color + '; ' +
+              'border-radius: 4px; padding: 10px 12px;">' +
+        '<div class="text-[10px] uppercase tracking-wider mb-1" ' +
+             'style="color: #888780;">' +
           escapeHtml(cell.label || "") +
         "</div>" +
         '<div class="flex items-center justify-between gap-2">' +
@@ -122,7 +144,8 @@
                  'style="color: ' + valueColor + '">' +
               escapeHtml(cell.value || "—") +
             "</div>" +
-            '<div class="text-[11px] font-mono mt-0.5 text-slate-400 truncate" ' +
+            '<div class="text-[11px] font-mono mt-0.5 truncate" ' +
+                 'style="color: #888780;" ' +
                  'title="' + escapeHtml(cell.driver || "") + '">' +
               escapeHtml(cell.driver || "") +
             "</div>" +

@@ -187,27 +187,40 @@
     const ticker = item.ticker || "";
     const sign = change >= 0 ? "+" : "";
     const pctText = sign + change.toFixed(2) + "%";
-    const pctColor = change >= 0 ? "text-emerald-700" : "text-rose-700";
+    // Day 44: brand-friendly direction colors. Brick #7A2E1E for
+    // negative (matches --rmn-tier-severe), forest #3B6D11 for
+    // positive — both work against the cream background where
+    // emerald + rose felt neon.
+    const pctColorStyle = change >= 0
+      ? "color: #3B6D11;"
+      : "color: #7A2E1E;";
 
-    const bar = '<div class="h-2 bg-slate-800" style="width: ' +
-                widthPct.toFixed(1) + '%"></div>';
+    // Day 44: bars in terracotta-brick #7A2E1E (matches --rmn-tier-severe
+    // and Risk Tape negative percent text). Tighter thematic match to
+    // the rest of the brand palette than the previous charcoal.
+    const bar = '<div style="height: 8px; width: ' +
+                widthPct.toFixed(1) + '%; background: #7A2E1E;"></div>';
 
+    // Day 44: axis line picks up the brand divider color rather than
+    // the previous neutral slate-300, threading the band visually
+    // into the rest of the cream palette.
     const negCell = isNegative
-      ? '<div class="flex justify-end pr-1 border-r border-slate-300">' + bar + "</div>"
-      : '<div class="border-r border-slate-300"></div>';
+      ? '<div class="flex justify-end pr-1" ' +
+          'style="border-right: 1px solid var(--rmn-divider);">' + bar + "</div>"
+      : '<div style="border-right: 1px solid var(--rmn-divider);"></div>';
     const posCell = isNegative
       ? '<div></div>'
       : '<div class="flex justify-start pl-1">' + bar + "</div>";
 
     const leftLabel = isNegative
-      ? '<span class="font-mono text-slate-900 text-right text-sm">' +
-          escapeHtml(ticker) + ' <span class="' + pctColor + '">' + escapeHtml(pctText) + "</span>" +
+      ? '<span class="font-mono text-right text-sm" style="color: #1A1A1A;">' +
+          escapeHtml(ticker) + ' <span style="' + pctColorStyle + '">' + escapeHtml(pctText) + "</span>" +
         "</span>"
       : "<span></span>";
     const rightLabel = isNegative
       ? "<span></span>"
-      : '<span class="font-mono text-slate-900 text-sm">' +
-          '<span class="' + pctColor + '">' + escapeHtml(pctText) + "</span> " + escapeHtml(ticker) +
+      : '<span class="font-mono text-sm" style="color: #1A1A1A;">' +
+          '<span style="' + pctColorStyle + '">' + escapeHtml(pctText) + "</span> " + escapeHtml(ticker) +
         "</span>";
 
     return (

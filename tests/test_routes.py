@@ -24,7 +24,10 @@ def test_index_returns_html_with_panel_shells(client: TestClient) -> None:
 
     body = response.text
     assert "<html" in body.lower()
-    assert "Hurricane Dashboard" in body
+    # Day 44 renamed the page title from "Hurricane Dashboard" to
+    # "Hurricane Risk, Markets and Models Dashboard" — surfaces the
+    # three data layers explicitly.
+    assert "Hurricane Risk, Markets and Models Dashboard" in body
 
     # Seven panels (six original + the Day 12 landfall map). The class
     # appears once in the <style> block plus once per panel, so eight

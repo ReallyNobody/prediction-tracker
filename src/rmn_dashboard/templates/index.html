@@ -20,12 +20,11 @@
   #}
   <section class="mb-6">
     <h1 class="rmn-heading text-2xl sm:text-3xl text-slate-900 mb-2">
-      Hurricane Dashboard
+      Hurricane Risk, Markets and Models Dashboard
     </h1>
     <p class="max-w-3xl text-sm text-slate-600 leading-relaxed">
-      How hurricane risk is being tracked by models and researchers
-      while also being priced by markets. Updated throughout the day
-      during hurricane season.
+      How hurricane risk is being tracked by models and priced by
+      markets. Updated throughout the day during hurricane season.
     </p>
   </section>
 
@@ -46,11 +45,21 @@
     entirely rather than fabricating a flat line.
   #}
   <section data-testid="signal-tape-section" class="mb-4">
+    {#
+      Day 44: re-palettized from a dark band (#1A1A1A) to the cream
+      brand surface. The tape now sits on white cards inside the
+      page's cream background, with terracotta tier accents matching
+      --rmn-divider. Visual hierarchy is preserved by (a) the heavier
+      Source Serif 4 tone word on the left and (b) thin terracotta
+      borders on either side of the band — both reading "this is a
+      summary surface, the panels below are detail" without breaking
+      the cream cohesion with the parent Ghost site.
+    #}
     <div id="signal-tape"
          class="rounded-lg px-4 py-4 sm:px-5 sm:py-4"
-         style="background: #1A1A1A; color: #E8E5DD;"
+         style="background: var(--rmn-cream); border-top: 1px solid var(--rmn-divider); border-bottom: 1px solid var(--rmn-divider);"
          data-testid="signal-tape">
-      <div class="text-xs text-slate-400">Loading signal tape…</div>
+      <div class="text-xs" style="color: var(--rmn-tier-quiet);">Loading signal tape…</div>
     </div>
   </section>
 
