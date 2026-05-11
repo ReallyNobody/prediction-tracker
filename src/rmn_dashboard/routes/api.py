@@ -25,6 +25,7 @@ from rmn_dashboard.services.daily_changes import todays_changes
 from rmn_dashboard.services.equity_quotes import latest_universe_quotes
 from rmn_dashboard.services.forecasts import active_storm_forecasts
 from rmn_dashboard.services.historical_analogs import find_analogs
+from rmn_dashboard.services.signal_tape import compute_signal_tape
 
 router = APIRouter(prefix="/api/v1", tags=["forecasts"])
 
@@ -235,3 +236,47 @@ def get_todays_changes(db: Session = Depends(get_session)) -> dict[str, object]:
     JS renders an honest "Quiet day" message in that case.
     """
     return todays_changes(db)
+
+
+@router.get("/signal-tape")
+def get_signal_tape(
+    history_days: int = Query(default=14, ge=1, le=90),
+    db: Session = Depends(get_session),
+) -> dict[str, object]:
+    """Return the Signal Tape payload — the page-top hurricane risk anchor.
+
+    Four cells (Storms / Equities / Risk capital / Markets), each
+    carrying a current tier (quiet / watching / active / severe), a
+    value word, a one-line driver, and a daily-aggregate history array
+    for the sparkline. A composite ``tone`` is the max tier across
+    cells.
+
+    Response shape::
+
+        {
+          "as_of":         "2026-05-10T14:30:00+00:00",
+          "history_days":  14,
+          "tone":          "watching",
+          "tone_label":    "Watching",
+          "cells": [
+            {
+              "label":       "Storms",
+              "tier":        "watching",
+              "tier_label":  "Watching",
+              "value":       "1 active",
+              "driver":      "TS Foo · 65 kt",
+              "history": [
+                {"date": "2026-05-01", "value": 0.0},
+                {"date": "2026-05-02", "value": 1.0},
+                ...
+              ]
+            },
+            ...
+          ]
+        }
+
+    History depth degrades gracefully — a cell whose snapshot table
+    is empty returns ``history: []`` and the frontend skips drawing a
+    sparkline for that cell rather than fabricating a flat line.
+    """
+    return compute_signal_tape(db, history_days=history_days)

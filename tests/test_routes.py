@@ -206,6 +206,28 @@ def test_analogs_endpoint_returns_offseason_payload(client: TestClient) -> None:
     assert len(body["analogs"]) >= 1
 
 
+def test_index_wires_up_signal_tape(client: TestClient) -> None:
+    """Day 43: the page-top Signal Tape ships its mount container and
+    the loader script. Smoke test only — no JS exercised here."""
+    body = client.get("/").text
+    assert 'id="signal-tape"' in body
+    assert 'data-testid="signal-tape"' in body
+    assert "/static/js/signal_tape.js" in body
+
+
+def test_signal_tape_endpoint_returns_four_cells(client: TestClient) -> None:
+    """The /api/v1/signal-tape endpoint always returns four cells with
+    a uniform shape so the JS render loop is branch-free."""
+    response = client.get("/api/v1/signal-tape")
+    assert response.status_code == 200
+    payload = response.json()
+    assert "tone" in payload
+    assert "cells" in payload
+    assert len(payload["cells"]) == 4
+    labels = [c["label"] for c in payload["cells"]]
+    assert labels == ["Storms", "Equities", "Risk capital", "Markets"]
+
+
 def test_index_wires_up_changes_panel(client: TestClient) -> None:
     """Panel 6 (What changed today) ships its readout container, empty
     state, as-of label, and the loader script.
@@ -291,6 +313,28 @@ def test_healthz(client: TestClient) -> None:
     response = client.get("/healthz")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_robots_txt_serves_permissive_allow_all(client: TestClient) -> None:
+    """``/robots.txt`` returns a permissive allow-all directive.
+
+    Day 33 added this route after Facebook's Sharing Debugger flagged
+    a 403 on the canonical URL with a heuristic suggestion that
+    robots.txt might be the cause. The route silences that warning
+    regardless of whether the underlying issue was here. Asserts the
+    structural shape — User-agent, Allow rules, and explicit lines
+    for the major share-card scrapers — so a future contributor
+    can't drop them without the test catching it.
+    """
+    response = client.get("/robots.txt")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain")
+    body = response.text
+    assert "User-agent: *" in body
+    assert "Allow: /" in body
+    # Explicit share-card scraper allow lines.
+    for ua in ("facebookexternalhit", "Twitterbot", "LinkedInBot"):
+        assert ua in body, f"missing allow line for {ua}"
 
 
 def test_index_supports_head_request(client: TestClient) -> None:

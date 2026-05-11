@@ -2,6 +2,7 @@
 {% block title %}RMN Hurricane Dashboard — Live{% endblock %}
 
 {% block content %}
+  <script src="{{ url_for('static', path='/js/signal_tape.js') }}" defer></script>
   <script src="{{ url_for('static', path='/js/forecast_map.js') }}" defer></script>
   <script src="{{ url_for('static', path='/js/panel_landfall.js') }}" defer></script>
   <script src="{{ url_for('static', path='/js/panel_equities.js') }}" defer></script>
@@ -26,6 +27,31 @@
       while also being priced by markets. Updated throughout the day
       during hurricane season.
     </p>
+  </section>
+
+  {#
+    Signal Tape (Day 43) — page-top hurricane risk anchor.
+
+    Four cells (Storms / Equities / Risk capital / Markets) read from
+    /api/v1/signal-tape. Each cell carries a current tier word + a
+    one-line driver + a 14-day sparkline. A composite "tone today"
+    word on the left is the max-tier across cells. Renders against a
+    dark background so it sits visually distinct from the cream-and-
+    white panels below — establishes "this is the top-level read,
+    panels below are detail."
+
+    Sparklines are inline SVG (no charting library). Width is fixed
+    at 80px per cell; the value + driver text columns flex to fill
+    the rest of each cell. Empty history arrays drop the sparkline
+    entirely rather than fabricating a flat line.
+  #}
+  <section data-testid="signal-tape-section" class="mb-4">
+    <div id="signal-tape"
+         class="rounded-lg px-4 py-4 sm:px-5 sm:py-4"
+         style="background: #1A1A1A; color: #E8E5DD;"
+         data-testid="signal-tape">
+      <div class="text-xs text-slate-400">Loading signal tape…</div>
+    </div>
   </section>
 
   {#

@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
@@ -124,7 +124,53 @@ async def index(
     )
 
 
+_ROBOTS_TXT = (
+    "User-agent: *\n"
+    "Allow: /\n"
+    "\n"
+    "# Explicit allow lines for the share-card scrapers — defensive\n"
+    "# against any heuristic that interprets 'no specific allow' as\n"
+    "# 'maybe blocked.' All of these are well-behaved verified bots.\n"
+    "User-agent: facebookexternalhit\n"
+    "Allow: /\n"
+    "\n"
+    "User-agent: facebookcatalog\n"
+    "Allow: /\n"
+    "\n"
+    "User-agent: Twitterbot\n"
+    "Allow: /\n"
+    "\n"
+    "User-agent: LinkedInBot\n"
+    "Allow: /\n"
+)
+
+
 @app.get("/healthz", response_class=JSONResponse)
 async def healthz() -> dict[str, str]:
     """Liveness probe for Render/Railway health checks."""
     return {"status": "ok"}
+    _ROBOTS_TXT = (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "\n"
+        "# Explicit allow lines for the share-card scrapers — defensive\n"
+        "# against any heuristic that interprets 'no specific allow' as\n"
+        "# 'maybe blocked.' All of these are well-behaved verified bots.\n"
+        "User-agent: facebookexternalhit\n"
+        "Allow: /\n"
+        "\n"
+        "User-agent: facebookcatalog\n"
+        "Allow: /\n"
+        "\n"
+        "User-agent: Twitterbot\n"
+        "Allow: /\n"
+        "\n"
+        "User-agent: LinkedInBot\n"
+        "Allow: /\n"
+    )
+
+
+@app.get("/robots.txt", response_class=PlainTextResponse)
+async def robots() -> str:
+    """Permissive allow-all robots.txt; see ``_ROBOTS_TXT`` docstring above."""
+    return _ROBOTS_TXT
