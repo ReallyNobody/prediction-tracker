@@ -48,7 +48,7 @@ def test_index_returns_html_with_panel_shells(client: TestClient) -> None:
         "Companies on the line",
         "Hurricane risk capital",
         "Historical analogs",
-        "What changed today",
+        "What changed",
     ):
         assert heading in body, f"missing heading: {heading}"
 

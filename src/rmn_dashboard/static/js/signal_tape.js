@@ -119,11 +119,12 @@
 
   function buildCell(cell) {
     const color = tierColor(cell.tier);
-    // Day 44: white card on cream background, with the tier color as a
-    // 3px left border accent. Quiet cells use warm slate as the value
-    // color so "Calm" doesn't shout; non-quiet cells colorize the
-    // value word to match the tier border for visual cohesion.
-    const valueColor = cell.tier === "quiet" ? "#5F5E5A" : color;
+    // Day 44a: bumped value text contrast against the cream surface.
+    // The original #5F5E5A read washed-out at the 15px size; #2C2B27
+    // (near-black warm) is the floor for body-weight readability on
+    // a #F7F4F1 background. Non-quiet cells still colorize the value
+    // word to the tier color for visual cohesion.
+    const valueColor = cell.tier === "quiet" ? "#2C2B27" : color;
     const sparkline = (cell.history && cell.history.length > 0)
       ? buildSparkline(cell.history, color)
       : "";
@@ -135,7 +136,7 @@
               'border-left: 3px solid ' + color + '; ' +
               'border-radius: 4px; padding: 10px 12px;">' +
         '<div class="text-[10px] uppercase tracking-wider mb-1" ' +
-             'style="color: #888780;">' +
+             'style="color: #5F5E5A;">' +
           escapeHtml(cell.label || "") +
         "</div>" +
         '<div class="flex items-center justify-between gap-2">' +
@@ -145,7 +146,7 @@
               escapeHtml(cell.value || "—") +
             "</div>" +
             '<div class="text-[11px] font-mono mt-0.5 truncate" ' +
-                 'style="color: #888780;" ' +
+                 'style="color: #5F5E5A;" ' +
                  'title="' + escapeHtml(cell.driver || "") + '">' +
               escapeHtml(cell.driver || "") +
             "</div>" +
