@@ -129,10 +129,14 @@
       ? buildSparkline(cell.history, color)
       : "";
 
+    // Day 44b: cells switch to cream background inside the white
+    // panel-shell parent. The cream/white contrast is subtle but
+    // enough to read each cell as its own content block, and text on
+    // cream picks up the natural contrast the old dark-band design
+    // was trying to achieve through over-darkened type.
     return (
       '<div ' +
-        'style="background: #FFFFFF; ' +
-              'border: 1px solid #E8E2D8; ' +
+        'style="background: var(--rmn-cream); ' +
               'border-left: 3px solid ' + color + '; ' +
               'border-radius: 4px; padding: 10px 12px;">' +
         '<div class="text-[10px] uppercase tracking-wider mb-1" ' +

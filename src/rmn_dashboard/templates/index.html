@@ -44,22 +44,18 @@
     the rest of each cell. Empty history arrays drop the sparkline
     entirely rather than fabricating a flat line.
   #}
-  <section data-testid="signal-tape-section" class="mb-4">
+  <section class="panel-shell rounded-lg border border-slate-200 bg-white p-5 mb-4"
+           data-testid="signal-tape-section">
     {#
-      Day 44: re-palettized from a dark band (#1A1A1A) to the cream
-      brand surface. The tape now sits on white cards inside the
-      page's cream background, with terracotta tier accents matching
-      --rmn-divider. Visual hierarchy is preserved by (a) the heavier
-      Source Serif 4 tone word on the left and (b) thin terracotta
-      borders on either side of the band — both reading "this is a
-      summary surface, the panels below are detail" without breaking
-      the cream cohesion with the parent Ghost site.
+      Day 44b: Signal Tape moves into a panel-shell card matching the
+      other panels' visual treatment. The white surface gives the cell
+      text natural contrast (rather than relying on darker text on a
+      cream band, which read washed-out). Visual hierarchy still comes
+      from (a) the Source Serif 4 tone word on the left and (b) tier-
+      colored left borders on each cell.
     #}
-    <div id="signal-tape"
-         class="rounded-lg px-4 py-4 sm:px-5 sm:py-4"
-         style="background: var(--rmn-cream); border-top: 1px solid var(--rmn-divider); border-bottom: 1px solid var(--rmn-divider);"
-         data-testid="signal-tape">
-      <div class="text-xs" style="color: var(--rmn-tier-quiet);">Loading signal tape…</div>
+    <div id="signal-tape" data-testid="signal-tape">
+      <div class="text-xs text-slate-400">Loading signal tape…</div>
     </div>
   </section>
 
