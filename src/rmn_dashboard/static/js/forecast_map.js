@@ -104,13 +104,49 @@
   });
 
   function showEmptyState(emptyEl, mapEl) {
-    // Same message year-round during the off-season. Atlantic hurricane
-    // season officially runs Jun 1 – Nov 30; NHC occasionally issues
-    // pre-season products for May systems but those still show up via
-    // /api/v1/forecasts/active when they exist.
-    emptyEl.innerHTML =
-      '<p class="text-sm">No active Atlantic storms — hurricane season runs June 1 – November 30.</p>';
+    // Day 47: the empty-state slot now shows NHC's 7-day Atlantic
+    // Tropical Weather Outlook graphic — colored zones over the basin
+    // marking where forecasters think tropical development is possible
+    // over the next week. NHC publishes this 4× daily year-round, so
+    // even on a quiet June 1 the panel has real, real-time forecast
+    // content rather than a "season hasn't started" placeholder.
+    //
+    // When an active storm forms, the cone map takes precedence and
+    // this empty state hides — same branching logic as before, just
+    // with a richer fallback. If the NHC image fails to load (their
+    // CDN down, URL changed, network filter), gracefully reverts to
+    // the original text-only message via the onerror handler below.
+    //
+    // The image is a US government public-domain product; NHC
+    // explicitly encourages embedding via direct URL.
+    const OUTLOOK_URL = "https://www.nhc.noaa.gov/xgtwo/two_atl_7d0.png";
+    emptyEl.innerHTML = (
+      '<figure class="space-y-2">' +
+        '<img src="' + OUTLOOK_URL + '" ' +
+             'alt="NHC 7-day Atlantic tropical formation outlook" ' +
+             'class="w-full max-h-96 object-contain rounded border border-slate-200 bg-white" ' +
+             'id="nhc-outlook-img" />' +
+        '<figcaption class="text-xs text-slate-500 leading-relaxed">' +
+          'No active Atlantic storms. Above: National Hurricane Center ' +
+          '7-day tropical formation outlook, updated 4× daily. Hurricane ' +
+          'season runs June 1 – November 30.' +
+        "</figcaption>" +
+      "</figure>"
+    );
     mapEl.classList.add("hidden");
+
+    // Fallback: if the NHC image 404s or times out, revert to the
+    // text-only empty state so the panel never shows a broken-image
+    // icon. Listener attached after innerHTML so the IMG element
+    // exists in the DOM.
+    const img = document.getElementById("nhc-outlook-img");
+    if (img) {
+      img.addEventListener("error", function () {
+        emptyEl.innerHTML =
+          '<p class="text-sm">No active Atlantic storms — hurricane season ' +
+          'runs June 1 – November 30.</p>';
+      });
+    }
   }
 
   function renderMap(mapEl, emptyEl, advisoryEl, storms) {
