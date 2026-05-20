@@ -61,15 +61,19 @@ def test_latest_hurricane_markets_picks_most_recent_snapshot_per_ticker(
 ) -> None:
     """Two snapshots of the same ticker at different times → only the newer
     one should come back. Prices differ so we can prove which row won."""
+    # Day 46: use a landfall-style ticker rather than KXHURCTOT-* so this
+    # test exercises only the snapshot-picking logic without intersecting
+    # the new exclude_count_series filter (which would drop the row by
+    # design — that filtering behavior has its own coverage below).
     now = datetime(2026, 4, 23, 12, 0, tzinfo=UTC)
     older = _snapshot(
-        "KXHURCTOT-26DEC01-T7",
+        "KXLANDFL-26-FL",
         yes_price=0.30,
         volume_total=10000.0,
         last_updated=now - timedelta(hours=6),
     )
     newer = _snapshot(
-        "KXHURCTOT-26DEC01-T7",
+        "KXLANDFL-26-FL",
         yes_price=0.50,
         volume_total=25000.0,
         last_updated=now,

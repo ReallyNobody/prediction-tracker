@@ -310,7 +310,12 @@ def _prediction_market_movers(db: Session, *, limit: int) -> list[dict[str, Any]
     # Pull more than the limit so the volume_24h sort has headroom —
     # the underlying query orders by volume_total (cumulative), which
     # is correlated with but not identical to volume_24h.
-    rows = latest_hurricane_markets(db, limit=limit * 4)
+    # Day 46: Panel 6 volume-movers wants the full hurricane-market
+    # universe including the Kalshi count-ladder contracts, so the
+    # Risk Tape can surface a count-threshold spike if one trades
+    # heavily. The Day-46 Panel 4 count-curve panel filters those out
+    # of its own text list, but the changes feed shouldn't.
+    rows = latest_hurricane_markets(db, limit=limit * 4, exclude_count_series=False)
 
     movers: list[dict[str, Any]] = []
     for row in rows:

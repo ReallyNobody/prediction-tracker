@@ -70,12 +70,17 @@ def test_index_renders_market_rows_when_seeded(client: TestClient, db_session: S
     Polymarket joined Kalshi. The seeded volume_total + volume_24h drive
     the new $-formatted readout.
     """
+    # Day 46: ticker changed from KXHURCTOT-26DEC01-T7 to KXLANDFL-26-FL
+    # so the test row survives the new exclude_count_series filter on
+    # latest_hurricane_markets — count tickers are now rendered as the
+    # curve at the top of Panel 4, not as text rows in the list below.
+    # Title updated to match the new ticker's semantics.
     db_session.add(
         PredictionMarket(
             platform="kalshi",
-            ticker="KXHURCTOT-26DEC01-T7",
-            event_ticker="KXHURCTOT-26DEC01",
-            title="Will there be more than 7 Atlantic hurricanes in 2026?",
+            ticker="KXLANDFL-26-FL",
+            event_ticker="KXLANDFL-26",
+            title="Will a hurricane make landfall in Florida in 2026?",
             category="hurricane",
             yes_price=0.42,
             no_price=0.58,
@@ -88,8 +93,8 @@ def test_index_renders_market_rows_when_seeded(client: TestClient, db_session: S
     db_session.commit()
 
     body = client.get("/").text
-    assert "Will there be more than 7 Atlantic hurricanes in 2026?" in body
-    assert "kalshi.com/markets/KXHURCTOT-26DEC01-T7" in body
+    assert "Will a hurricane make landfall in Florida in 2026?" in body
+    assert "kalshi.com/markets/KXLANDFL-26-FL" in body
     assert "42¢" in body  # yes_price formatted as cents
     assert "$12,345" in body  # cumulative volume formatted as dollars
     assert "+$678" in body  # 24h volume delta inline
@@ -216,6 +221,36 @@ def test_index_wires_up_signal_tape(client: TestClient) -> None:
     assert 'id="signal-tape"' in body
     assert 'data-testid="signal-tape"' in body
     assert "/static/js/signal_tape.js" in body
+
+
+def test_index_wires_up_count_curve(client: TestClient) -> None:
+    """Day 46: the count-curve container ships with the page and the
+    panel_count_curve loader is referenced from index.html."""
+    body = client.get("/").text
+    assert 'id="count-curve"' in body
+    assert 'data-testid="count-curve"' in body
+    assert "/static/js/panel_count_curve.js" in body
+
+
+def test_count_curve_endpoint_returns_required_shape(client: TestClient) -> None:
+    """``/api/v1/markets/count-curve`` always returns the same top-level
+    keys so the JS render loop is branch-free."""
+    response = client.get("/api/v1/markets/count-curve")
+    assert response.status_code == 200
+    payload = response.json()
+    required = {
+        "season",
+        "season_label",
+        "platform",
+        "points",
+        "median",
+        "climate_average",
+        "anomalies",
+        "as_of",
+    }
+    assert required.issubset(payload.keys())
+    assert payload["platform"] == "kalshi"
+    assert payload["climate_average"] == 7.2
 
 
 def test_signal_tape_endpoint_returns_four_cells(client: TestClient) -> None:

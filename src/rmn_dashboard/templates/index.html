@@ -7,6 +7,7 @@
   <script src="{{ url_for('static', path='/js/panel_landfall.js') }}" defer></script>
   <script src="{{ url_for('static', path='/js/panel_equities.js') }}" defer></script>
   <script src="{{ url_for('static', path='/js/panel_risk_capital.js') }}" defer></script>
+  <script src="{{ url_for('static', path='/js/panel_count_curve.js') }}" defer></script>
   <script src="{{ url_for('static', path='/js/panel_changes.js') }}" defer></script>
   <script src="{{ url_for('static', path='/js/panel_analogs.js') }}" defer></script>
 
@@ -161,6 +162,30 @@
         shows how much has actually traded on each market — the 24h
         delta highlights what's moving today.
       </p>
+
+      {#
+        Day 46: count-curve anchor at the top of the panel.
+
+        The Kalshi KXHURCTOT-{YEAR}DEC01-T{N} contracts form a
+        ladder of binary bets at incremental thresholds. Rendered as
+        a cumulative probability curve, the ladder visualizes the
+        market's consensus distribution of expected hurricane counts
+        for the season. The supporting markets list below this block
+        excludes those count contracts (filtered server-side via
+        latest_hurricane_markets exclude_count_series) and focuses
+        on the questions that don't fit a single count axis — named
+        storm by date, Cat 3+ landfall in state X, etc.
+
+        Client-rendered against /api/v1/markets/count-curve; the
+        empty-state caption renders when there aren't enough count
+        contracts ingested yet (off-season pre-listing, fresh deploy).
+      #}
+      <div id="count-curve"
+           class="mt-3 mb-4"
+           data-testid="count-curve">
+        <p class="text-xs italic" style="color: #888780;">Loading count curve…</p>
+      </div>
+
       {% if markets %}
         <ul class="mt-3 divide-y divide-slate-100">
           {% for m in markets %}

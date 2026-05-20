@@ -17,6 +17,8 @@ from rmn_dashboard.models import PredictionMarket
 def latest_hurricane_markets(
     db: Session,
     limit: int = 10,
+    *,
+    exclude_count_series: bool = True,
 ) -> list[PredictionMarket]:
     """Return the most recent snapshot per hurricane market, ordered by
     cumulative trading volume descending (most-traded first).
@@ -30,6 +32,15 @@ def latest_hurricane_markets(
     interesting metric for a journalism dashboard — "how much money
     has actually moved on this question?" reads more directly than
     open contract count.
+
+    Day 46: ``exclude_count_series`` defaults to True so the supporting
+    text list in Panel 4 doesn't duplicate the count-curve panel above
+    it. The curve renders the full Kalshi KXHURCTOT-* ladder
+    visually; the list focuses on non-count markets (named storm by
+    date, Cat 3+ landfall in state X, etc.) that don't fit on the
+    curve's axes. Callers that want the full unfiltered set (e.g.,
+    the Panel 6 "What changed" volume-mover service) pass
+    ``exclude_count_series=False``.
 
     Implementation note: group-by subquery → join. Portable across SQLite
     (dev) and Postgres (prod); no need for Postgres-only ``DISTINCT ON`` or
@@ -58,14 +69,23 @@ def latest_hurricane_markets(
             & (PredictionMarket.last_updated == latest_per_ticker.c.max_ts),
         )
         .where(PredictionMarket.category == "hurricane")
-        .order_by(
-            # NULL volume sorts last so rows with real activity always show
-            # first — important pre-season when half the markets have zero
-            # volume.
-            PredictionMarket.volume_total.desc().nulls_last(),
-            PredictionMarket.ticker,
-        )
-        .limit(limit)
     )
+    if exclude_count_series:
+        # Filter Kalshi count-ladder contracts. Pattern matches the
+        # KXHURCTOT-{YEAR}DEC01-T{N} family that count_curve renders
+        # as the visual curve in Panel 4's top half. Other prefixes
+        # (KXHURRT, KXHURMAJ, KXLANDFL, KXNAMEDSTORM, etc.) remain so
+        # the list still shows landfall, named-storm-by-date, and
+        # major-hurricane markets — the questions that DON'T fit on
+        # a single count axis and need their own row.
+        stmt = stmt.where(PredictionMarket.ticker.notlike("KXHURCTOT-%DEC01-T%"))
+
+    stmt = stmt.order_by(
+        # NULL volume sorts last so rows with real activity always show
+        # first — important pre-season when half the markets have zero
+        # volume.
+        PredictionMarket.volume_total.desc().nulls_last(),
+        PredictionMarket.ticker,
+    ).limit(limit)
 
     return list(db.scalars(stmt).all())

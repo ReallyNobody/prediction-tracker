@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from rmn_dashboard.data.universe import Sector
 from rmn_dashboard.database import get_session
+from rmn_dashboard.services.count_curve import compute_count_curve
 from rmn_dashboard.services.daily_changes import todays_changes
 from rmn_dashboard.services.equity_quotes import latest_universe_quotes
 from rmn_dashboard.services.forecasts import active_storm_forecasts
@@ -280,3 +281,54 @@ def get_signal_tape(
     sparkline for that cell rather than fabricating a flat line.
     """
     return compute_signal_tape(db, history_days=history_days)
+
+
+@router.get("/markets/count-curve")
+def get_count_curve(
+    season: str = Query(
+        default="26",
+        pattern=r"^\d{2}$",
+        description=(
+            "Two-digit season year (26 = 2026). Matches the season "
+            "segment of the Kalshi ticker format "
+            "KXHURCTOT-{YEAR}DEC01-T{N}."
+        ),
+    ),
+    db: Session = Depends(get_session),
+) -> dict[str, object]:
+    """Return the Kalshi hurricane-count threshold curve for one season.
+
+    Powers the count-curve visualization at the top of Panel 4
+    (Prediction Markets). Each contract in the Kalshi count series
+    settles "Yes" if total Atlantic hurricanes for the season exceed
+    a specific threshold N. The market-clearing yes_price is the
+    market-implied probability that total > N.
+
+    Response shape::
+
+        {
+          "season":            "26",
+          "season_label":      "2026",
+          "platform":          "kalshi",
+          "points": [
+            {"threshold": 4,   "yes_price": 0.78},
+            {"threshold": 5,   "yes_price": 0.47},
+            ...
+          ],
+          "median":            4.9,
+          "climate_average":   7.2,
+          "anomalies": [
+            {"threshold": 8,
+             "yes_price": 0.22,
+             "previous_threshold": 7,
+             "previous_yes_price": 0.21,
+             "note": "violates monotonicity (off-season illiquidity likely)"}
+          ],
+          "as_of":             "2026-05-13T18:30:00+00:00"
+        }
+
+    Empty ``points`` is an honest empty state — no count contracts in
+    the DB, fresh deploy, or off-season pre-listing. The frontend
+    handles that with a one-line caption rather than a broken axis.
+    """
+    return compute_count_curve(db, season=season)
