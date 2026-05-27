@@ -441,5 +441,16 @@ def test_index_ships_share_card_meta(client: TestClient) -> None:
     assert 'name="twitter:description"' in body
     assert 'name="twitter:image"' in body
 
-    # The OG image is served from /static/, not embedded inline.
-    assert "og-image.svg" in body
+    # Regression guard. The og:image / twitter:image URLs used to be
+    # built as ``"https://hurricane.riskmarketnews.com" + url_for(...)``,
+    # but url_for already returns an absolute URL under uvicorn + proxy
+    # headers — so the concatenation produced
+    # ``https://hurricane.riskmarketnews.comhttps://...`` in served HTML,
+    # silently breaking every social-share preview (LinkedIn / Slack /
+    # Twitter / iMessage). Asserting both the canonical form and the
+    # absence of the doubled scheme catches any future re-introduction.
+    assert "https://hurricane.riskmarketnews.comhttps" not in body, (
+        "og:image / twitter:image URL is double-prefixed — host concatenated "
+        "with an already-absolute url_for result"
+    )
+    assert 'content="https://hurricane.riskmarketnews.com/static/og-image.png"' in body

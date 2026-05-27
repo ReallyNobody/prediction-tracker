@@ -33,7 +33,14 @@
       content="How hurricane risk is being tracked by models and priced by markets. Updated throughout the day during hurricane season."
     />
     <meta property="og:url" content="https://hurricane.riskmarketnews.com/" />
-    <meta property="og:image" content="https://hurricane.riskmarketnews.com{{ url_for('static', path='/og-image.png') }}" />
+    <!--
+      og:image must be an absolute URL with the public scheme + host —
+      hardcoded to match the canonical pattern above (og:url, link rel
+      canonical). url_for('static', ...) already returns an absolute URL
+      under uvicorn + proxy headers, so combining the two double-prefixes
+      the host; literal is the safer single source of truth.
+    -->
+    <meta property="og:image" content="https://hurricane.riskmarketnews.com/static/og-image.png" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -48,7 +55,7 @@
       name="twitter:description"
       content="Hurricane risk, tracked by models and priced by markets. Real-time forecasts, equities, prediction markets, cat bonds."
     />
-    <meta name="twitter:image" content="https://hurricane.riskmarketnews.com{{ url_for('static', path='/og-image.png') }}" />
+    <meta name="twitter:image" content="https://hurricane.riskmarketnews.com/static/og-image.png" />
     <meta name="twitter:image:alt" content="RMN Hurricane Dashboard — hurricane risk pricing, translated." />
 
     <!--
