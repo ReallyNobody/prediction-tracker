@@ -103,7 +103,7 @@ def test_returns_four_cells_in_fixed_order(db_session: Session) -> None:
     payload = compute_signal_tape(db_session)
     assert "cells" in payload
     labels = [c["label"] for c in payload["cells"]]
-    assert labels == ["Storms", "Equities", "Risk capital", "Markets"]
+    assert labels == ["Storms", "Equities", "Risk capital", "Prediction Markets"]
 
 
 def test_each_cell_has_uniform_shape(db_session: Session) -> None:

@@ -368,7 +368,15 @@ def _markets_cell(db: Session, *, history_days: int) -> dict[str, Any]:
     history = _markets_history(db, days=history_days)
 
     return {
-        "label": "Markets",
+        # Day 39: renamed from "Markets" to "Prediction Markets" so the
+        # cell self-describes (was ambiguous against "equity markets" /
+        # "cat bond market") and matches the terminology used in the
+        # June 1 launch piece's four-signal frame. The dashboard's other
+        # cells (Storms / Equities / Risk Capital) stay — they're daily
+        # operational signals, while the piece's frame is a seasonal
+        # pricing thesis; aligning everything would force empty cells
+        # for signals that don't have live feeds (notably reinsurance).
+        "label": "Prediction Markets",
         "tier": tier,
         "tier_label": _TIER_LABEL[tier],
         "value": value,

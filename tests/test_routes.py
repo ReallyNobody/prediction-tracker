@@ -263,7 +263,7 @@ def test_signal_tape_endpoint_returns_four_cells(client: TestClient) -> None:
     assert "cells" in payload
     assert len(payload["cells"]) == 4
     labels = [c["label"] for c in payload["cells"]]
-    assert labels == ["Storms", "Equities", "Risk capital", "Markets"]
+    assert labels == ["Storms", "Equities", "Risk capital", "Prediction Markets"]
 
 
 def test_index_wires_up_changes_panel(client: TestClient) -> None:
