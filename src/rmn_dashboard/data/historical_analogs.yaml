@@ -39,7 +39,7 @@
 # =====================================================================
 
 version: 1
-last_reviewed: 2026-04-25
+last_reviewed: 2026-05-27
 
 analogs:
 
@@ -167,6 +167,9 @@ analogs:
     landfall_lat: 26.6
     landfall_lon: -82.3
     landfall_state: FL
+    # Karen Clark & Co.: $63B privately insured. Aligns with Swiss Re
+    # sigma's $50-65B range; Ian remains the second-largest insured
+    # loss in US history after Katrina.
     insured_loss_usd_billions: 63.0
     narrative: >
       Cayo Costa FL Cat 4 with catastrophic SW Florida storm surge.
@@ -180,7 +183,15 @@ analogs:
     landfall_lat: 30.0
     landfall_lon: -83.6
     landfall_state: FL
-    insured_loss_usd_billions: 50.0
+    # Munich Re NatCat 2024: $16B insured of $56B total economic.
+    # The early-circulating $50B figure tracked Helene's total economic
+    # loss; insured was much lower because most inland flood damage in
+    # Appalachia was uninsured (NFIP penetration in mountain counties
+    # was in the single digits). Aon estimated ~$10B insured, Moody's
+    # RMS $8-14B — Munich Re's $16B sits at the high end of the credible
+    # range and is the figure RMN's reinsurance/ILS readers will most
+    # frequently see cited in industry reports.
+    insured_loss_usd_billions: 16.0
     narrative: >
       Big Bend FL Cat 4; remarkable for damage hundreds of miles
       inland, into NC mountain communities. Forced re-pricing of
@@ -193,7 +204,13 @@ analogs:
     landfall_lat: 27.3
     landfall_lon: -82.5
     landfall_state: FL
-    insured_loss_usd_billions: 25.0
+    # Karen Clark & Co.: ~$36B privately insured (wind, surge, inland
+    # flood, residential + commercial + auto). Sits in the middle of
+    # Fitch's $30-50B early-modeler range and is the figure KCC has
+    # held to in subsequent updates. Cited explicitly because KCC's
+    # methodology appears on the dashboard's June 11 Risky Science Live
+    # panel — editorial coherence matters.
+    insured_loss_usd_billions: 36.0
     narrative: >
       Siesta Key FL Cat 3, two weeks after Helene struck the same
       state. Demonstrated how insurer modeling underweights season

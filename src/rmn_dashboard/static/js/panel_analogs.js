@@ -77,16 +77,27 @@
       escapeHtml(String(entry.year || "")) +
       "</span>";
 
+    // Two distinct intensity readings live in the analog data:
+    //   - saffir_simpson_at_landfall — the Cat the storm was at *landfall*
+    //   - peak_kt — the storm's *lifetime peak* sustained winds
+    // These are often different (Milton 2024: Cat 3 at landfall, peaked
+    // Cat 5 / 155 kt). Rendering "Cat 3 · 155 kt peak" side-by-side made
+    // them read as the same metric. Qualify both explicitly, and derive
+    // the peak's Saffir-Simpson category so the reader sees the gap at
+    // a glance ("Cat 3 at landfall · peak Cat 5 (155 kt)").
     const cat =
       typeof entry.saffir_simpson_at_landfall === "number"
-        ? "Cat " + entry.saffir_simpson_at_landfall
+        ? "Cat " + entry.saffir_simpson_at_landfall + " at landfall"
         : "";
     const peakKt =
-      typeof entry.peak_kt === "number" ? entry.peak_kt + " kt peak" : "";
+      typeof entry.peak_kt === "number" ? formatPeak(entry.peak_kt) : "";
     const factsParts = [];
     if (cat) factsParts.push(cat);
     if (entry.landfall_state) {
-      factsParts.push("landfall " + escapeHtml(entry.landfall_state));
+      // "Cat X at landfall" above already establishes the landfall
+      // context, so the state stands alone — avoids "landfall" twice
+      // in the same facts line.
+      factsParts.push(escapeHtml(entry.landfall_state));
     }
     if (peakKt) factsParts.push(peakKt);
     if (typeof entry.distance_km === "number") {
@@ -121,6 +132,35 @@
         "</p>" +
       "</div>"
     );
+  }
+
+  /**
+   * Render the peak-intensity facts token. Derives the Saffir-Simpson
+   * category from the peak knots so the reader sees the peak's Cat
+   * explicitly — important because peak Cat often differs from the
+   * Cat at landfall (Milton 2024 peaked Cat 5 then landed as Cat 3).
+   *
+   * Saffir-Simpson breakpoints (in knots, per NHC):
+   *   Cat 1: 64-82, Cat 2: 83-95, Cat 3: 96-112, Cat 4: 113-136, Cat 5: 137+
+   *
+   * Below TS-force (34 kt) we fall back to a bare-kt token rather than
+   * inventing a Cat label that doesn't exist on the scale.
+   */
+  function formatPeak(peakKt) {
+    const cat = peakKtToCat(peakKt);
+    if (cat === null) {
+      return "peak " + peakKt + " kt";
+    }
+    return "peak Cat " + cat + " (" + peakKt + " kt)";
+  }
+
+  function peakKtToCat(kt) {
+    if (kt >= 137) return 5;
+    if (kt >= 113) return 4;
+    if (kt >= 96) return 3;
+    if (kt >= 83) return 2;
+    if (kt >= 64) return 1;
+    return null;
   }
 
   function showEmpty(emptyEl, readoutEl, message) {
