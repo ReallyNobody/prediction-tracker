@@ -245,7 +245,7 @@ Lighter touch; mostly about absorbing what came back.
 
 ---
 
-## Webinar — Risky Science Live, Wednesday June 11 2026, 2pm
+## Webinar — Risky Science Live, Thursday June 11 2026, 2pm EDT
 
 The Risky Science Podcast Live session is a major amplification moment
 for the dashboard. June 11 is 10 days into the 2026 hurricane season
@@ -320,7 +320,7 @@ and lets Vijay carry the modeling angle from his firm's perspective.
 
 Tighter than originally planned: the move from June 18 to June 11
 collapses the polish window from a full week to roughly three days
-(Monday June 8 through Wednesday June 11 morning), and it overlaps
+(Monday June 8 through Thursday June 11 morning), and it overlaps
 with the tail end of the post-launch first week. Use this window for
 low-risk UX tweaks ONLY — anything that would otherwise wait gets
 deferred until after the webinar.
@@ -361,7 +361,7 @@ Drives traffic + warms registrants up. Bonus: surfaces dashboard bugs
 from a wider audience three days before the live event, which you can
 fix in the polish window.
 
-**Day-of (~Wednesday June 11, 2pm) — choreography during the session.**
+**Day-of (~Thursday June 11, 2pm EDT) — choreography during the session.**
 
 - [ ] Pre-arrange with Vijay and Patrick which panels each will riff
       off (mapping above). A soft "hey Vijay, what does Panel 3 look
