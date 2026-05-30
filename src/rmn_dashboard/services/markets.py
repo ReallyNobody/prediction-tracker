@@ -8,7 +8,9 @@ route handlers so they stay focused on request wiring.
 
 from __future__ import annotations
 
-from sqlalchemy import func, select
+from datetime import UTC, datetime, timedelta
+
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from rmn_dashboard.models import PredictionMarket
@@ -19,6 +21,7 @@ def latest_hurricane_markets(
     limit: int = 10,
     *,
     exclude_count_series: bool = True,
+    min_days_until_close: int | None = None,
 ) -> list[PredictionMarket]:
     """Return the most recent snapshot per hurricane market, ordered by
     cumulative trading volume descending (most-traded first).
@@ -41,6 +44,18 @@ def latest_hurricane_markets(
     curve's axes. Callers that want the full unfiltered set (e.g.,
     the Panel 6 "What changed" volume-mover service) pass
     ``exclude_count_series=False``.
+
+    Day 47: ``min_days_until_close`` filters out markets whose ``close_date``
+    is within N days of now. Default ``None`` preserves prior behavior.
+    The user-visible list on the main dashboard passes a small positive
+    value (~2) so near-resolution residue from the pre-season period
+    (e.g. "Will a hurricane form by May 31?") doesn't clutter the panel
+    once it's essentially resolved. Markets with ``close_date IS NULL``
+    are always kept — undefined close dates usually mean season-aggregate
+    contracts that haven't pinned a resolution date yet. Panel 6's
+    "What changed" service deliberately does NOT pass this filter:
+    dramatic volume moves on resolving markets are editorially the
+    *most* interesting and shouldn't be suppressed.
 
     Implementation note: group-by subquery → join. Portable across SQLite
     (dev) and Postgres (prod); no need for Postgres-only ``DISTINCT ON`` or
@@ -79,6 +94,18 @@ def latest_hurricane_markets(
         # major-hurricane markets — the questions that DON'T fit on
         # a single count axis and need their own row.
         stmt = stmt.where(PredictionMarket.ticker.notlike("KXHURCTOT-%DEC01-T%"))
+
+    if min_days_until_close is not None:
+        # Drop markets whose close_date sits inside the cutoff window.
+        # NULL close_date passes through — undefined dates usually mean
+        # season-aggregate contracts (no specific resolution scheduled).
+        cutoff_date = (datetime.now(UTC) + timedelta(days=min_days_until_close)).date()
+        stmt = stmt.where(
+            or_(
+                PredictionMarket.close_date.is_(None),
+                PredictionMarket.close_date > cutoff_date,
+            )
+        )
 
     stmt = stmt.order_by(
         # NULL volume sorts last so rows with real activity always show

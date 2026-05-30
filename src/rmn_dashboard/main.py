@@ -110,7 +110,13 @@ async def index(
     on HEAD responses (per HTTP spec), so the same handler works for both.
     """
     cat_loss_count = db.scalar(select(func.count()).select_from(CatLoss)) or 0
-    markets = latest_hurricane_markets(db)
+    # min_days_until_close=2 suppresses near-resolution residue from the
+    # user-facing list (e.g. the pre-season "by May 31" markets that sit
+    # at 2¢/4¢ once the answer is essentially settled). Panel 6's "What
+    # changed" volume-mover service still sees the unfiltered set —
+    # dramatic moves on resolving markets are editorially the most
+    # interesting and shouldn't be suppressed there.
+    markets = latest_hurricane_markets(db, min_days_until_close=2)
 
     return templates.TemplateResponse(
         request,

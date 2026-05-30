@@ -26,6 +26,7 @@ def _snapshot(
     category: str = "hurricane",
     platform: str = "kalshi",
     title: str | None = None,
+    close_date: object = None,  # date | None
 ) -> PredictionMarket:
     """Build a PredictionMarket row with explicit last_updated (bypasses
     server-default) so we can seed deterministic timelines in tests.
@@ -49,6 +50,7 @@ def _snapshot(
         volume_total=volume_total,
         volume_24h=volume_24h,
         last_updated=last_updated,
+        close_date=close_date,
     )
 
 
@@ -193,3 +195,76 @@ def test_latest_hurricane_markets_handles_multiple_tickers_with_mixed_histories(
     # And the values come from the latest snapshot, not the first.
     assert next(r for r in rows if r.ticker == "A").volume_total == 30000.0
     assert next(r for r in rows if r.ticker == "C").volume_total == 1000.0
+
+
+def test_latest_hurricane_markets_filters_near_close_markets(
+    db_session: Session,
+) -> None:
+    """Day 47: ``min_days_until_close=N`` hides markets whose close_date
+    sits inside the next N days. NULL close_date passes through so
+    season-aggregate contracts (no specific resolution scheduled) keep
+    showing. Default (None) preserves prior behavior — all markets visible.
+
+    Editorial motivation: the pre-season "Will a hurricane form by
+    May 31?" markets sit at 2-4¢ once the answer is essentially settled
+    and were cluttering the user-facing list at launch time.
+    """
+    now = datetime(2026, 5, 29, 12, 0, tzinfo=UTC)
+    today = now.date()
+    db_session.add_all(
+        [
+            # Closes in 2 days — inside the default cutoff window.
+            _snapshot(
+                "RESOLVING_SOON",
+                yes_price=0.02,
+                volume_total=10000.0,
+                last_updated=now,
+                close_date=today + timedelta(days=2),
+            ),
+            # Closes in 5 days — outside the cutoff.
+            _snapshot(
+                "FAR_OUT",
+                yes_price=0.45,
+                volume_total=20000.0,
+                last_updated=now,
+                close_date=today + timedelta(days=5),
+            ),
+            # Already closed — should also drop on positive cutoff.
+            _snapshot(
+                "ALREADY_DONE",
+                yes_price=0.0,
+                volume_total=5000.0,
+                last_updated=now,
+                close_date=today - timedelta(days=1),
+            ),
+            # No close_date — season-aggregate; always passes through.
+            _snapshot(
+                "UNDATED",
+                yes_price=0.3,
+                volume_total=30000.0,
+                last_updated=now,
+                close_date=None,
+            ),
+        ]
+    )
+    db_session.commit()
+
+    # Default (None) keeps everything.
+    rows = latest_hurricane_markets(db_session)
+    assert {r.ticker for r in rows} == {
+        "RESOLVING_SOON",
+        "FAR_OUT",
+        "ALREADY_DONE",
+        "UNDATED",
+    }
+
+    # Day-3 cutoff hides RESOLVING_SOON + ALREADY_DONE; keeps FAR_OUT
+    # and UNDATED.
+    rows = latest_hurricane_markets(db_session, min_days_until_close=3)
+    assert {r.ticker for r in rows} == {"FAR_OUT", "UNDATED"}
+
+    # Day-2 cutoff is the launch setting. RESOLVING_SOON sits exactly
+    # at the cutoff (2 days out) and should be filtered; FAR_OUT and
+    # UNDATED both stay.
+    rows = latest_hurricane_markets(db_session, min_days_until_close=2)
+    assert {r.ticker for r in rows} == {"FAR_OUT", "UNDATED"}
