@@ -69,3 +69,4 @@ Thumbs.db
 # Node (if tailwind build added later)
 node_modules/
 package-lock.json
+_editorial/
