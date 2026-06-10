@@ -22,16 +22,25 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from rmn_dashboard.models import Forecast, Storm, StormObservation
+
+# NHC publishes Atlantic + Eastern Pacific + Central Pacific in the same
+# activeStorms feed. The scraper ingests all of them; this service filters
+# at the read layer so the basin choice is editorial, not data-shape, and
+# can be changed without a re-scrape. nhc_id prefixes are 'al' (Atlantic),
+# 'ep' (Eastern Pacific), 'cp' (Central Pacific) — always two ASCII letters
+# at the start of the canonical id string.
+_DEFAULT_BASINS: tuple[str, ...] = ("al",)
 
 
 def active_storm_forecasts(
     db: Session,
     *,
     include_wsp: bool = False,
+    basins: tuple[str, ...] = _DEFAULT_BASINS,
 ) -> list[dict[str, Any]]:
     """Return one payload per active storm with its latest forecast.
 
@@ -39,6 +48,15 @@ def active_storm_forecasts(
     into the megabytes for a full Atlantic basin fetch, and Panel 1 (the
     cone map) doesn't use it. Panel 4 (landfall probability) passes
     ``include_wsp=True``.
+
+    ``basins`` defaults to Atlantic-only. NHC's ``CurrentStorms.json`` feed
+    publishes Atlantic + Eastern Pacific + Central Pacific in a single
+    payload; the dashboard's editorial frame (launch piece, off-season
+    fallback image, empty-state copy) is Atlantic-only, so we filter at
+    read time. Pass ``basins=("al", "ep")`` to include EP, or ``basins=()``
+    to disable the filter entirely. Matching is case-insensitive — the
+    NHC payload uses lowercase ids ('ep032026') while existing seed data
+    and tests use uppercase ('AL112017').
 
     A storm with ``status == 'active'`` but no ``Forecast`` row yet — e.g.
     a freshly-ingested Invest that hasn't had its first forecastTrack
@@ -51,7 +69,11 @@ def active_storm_forecasts(
     (not uncommon at peak season), the first one in the list is the
     lower-numbered basin designator.
     """
-    active = db.scalars(select(Storm).where(Storm.status == "active").order_by(Storm.nhc_id)).all()
+    query = select(Storm).where(Storm.status == "active")
+    if basins:
+        basin_clauses = [Storm.nhc_id.ilike(f"{b}%") for b in basins]
+        query = query.where(basin_clauses[0] if len(basin_clauses) == 1 else or_(*basin_clauses))
+    active = db.scalars(query.order_by(Storm.nhc_id)).all()
     if not active:
         return []
 

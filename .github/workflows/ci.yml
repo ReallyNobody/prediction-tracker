@@ -32,10 +32,15 @@ jobs:
 
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        # v5 is the Node-24-compatible release. v4 was forced to Node 24 by
+        # the runner starting 2026-06-16 (Node 20 deprecation per GitHub
+        # changelog 2025-09-19), then Node 20 fully removed 2026-09-16.
+        uses: actions/checkout@v5
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        # Bumped from v5 → v6 alongside checkout for the same Node 24
+        # transition. See note on the checkout step.
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip

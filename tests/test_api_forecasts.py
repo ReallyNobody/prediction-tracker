@@ -215,6 +215,40 @@ def test_active_storm_forecasts_orders_by_nhc_id(db_session: Session) -> None:
     assert [p["storm"]["nhc_id"] for p in payloads] == ["AL092017", "AL112017"]
 
 
+def test_active_storm_forecasts_filters_to_atlantic_by_default(db_session: Session) -> None:
+    """NHC's activeStorms feed is basin-agnostic — Atlantic + Eastern
+    Pacific land in the same payload. The dashboard's editorial frame is
+    Atlantic-only, so the default basins=("al",) filter must hide EP /
+    CP storms even when the scraper has ingested them. Pass a wider
+    tuple to opt in to other basins. Matching is case-insensitive to
+    cope with the live NHC payload's lowercase ids ('ep032026') vs the
+    seed fixtures' uppercase ('AL112017').
+    """
+    obs_time = datetime(2026, 6, 10, 18, tzinfo=UTC)
+    atlantic = _make_storm(db_session, nhc_id="AL012026", name="AtlanticOne")
+    eastern_pacific = _make_storm(db_session, nhc_id="ep032026", name="Cristina")
+    central_pacific = _make_storm(db_session, nhc_id="CP012026", name="CentralOne")
+    for storm in (atlantic, eastern_pacific, central_pacific):
+        _make_observation(db_session, storm, observation_time=obs_time)
+        _make_forecast(db_session, storm, issued_at=obs_time)
+
+    # Default: Atlantic only.
+    payloads = active_storm_forecasts(db_session)
+    assert [p["storm"]["nhc_id"] for p in payloads] == ["AL012026"]
+
+    # Opt in to Eastern Pacific.
+    payloads = active_storm_forecasts(db_session, basins=("al", "ep"))
+    assert sorted(p["storm"]["nhc_id"] for p in payloads) == ["AL012026", "ep032026"]
+
+    # Disable the filter entirely.
+    payloads = active_storm_forecasts(db_session, basins=())
+    assert sorted(p["storm"]["nhc_id"] for p in payloads) == [
+        "AL012026",
+        "CP012026",
+        "ep032026",
+    ]
+
+
 def test_active_storm_forecasts_omits_wsp_by_default(db_session: Session) -> None:
     """wind_probability_geojson can be multi-MB. Default=exclude, to keep
     the cone-map fetch tight; the key should not even be present in the
