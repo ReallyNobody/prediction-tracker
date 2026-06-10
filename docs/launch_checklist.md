@@ -430,3 +430,40 @@ marketing channel the dashboard will have during its first season.
 _TBD — this section gets written the day after launch. Capture
 anything that surprised you, anything that the soft-launch missed,
 anything that the day-of pre-flight should have caught earlier._
+
+### Test conventions
+
+**Calendar-drift bugs in time-based tests.** When a test fixture
+hardcodes a "current" date but the production code under test calls
+`datetime.now(UTC)`, the test passes during development and for some
+weeks after, then silently breaks once the real calendar moves past
+the fixture date. Hit this pattern twice in the same session on
+2026-06-10: `test_history_includes_recent_storms` (signal-tape, seeded
+2026-05-10 against a 14-day window) and
+`test_latest_hurricane_markets_filters_near_close_markets` (markets,
+seeded 2026-05-29 against a `min_days_until_close` cutoff).
+
+**Convention going forward:** any test fixture that needs a "current"
+time uses `datetime.now(UTC)` directly. Hardcoded date literals are
+reserved for testing *specific historical events* (Andrew 1992,
+Helene 2024) where the date itself is the test subject. If a test
+legitimately needs to assert against a specific date relative to "now"
+(e.g., time-window filter boundary cases), use a `freezegun`-style
+time-fixing decorator rather than hardcoding both sides — that way
+the fixture and the production `datetime.now()` agree.
+
+**Lesson 2 — fixture/contract drift.** Discovered the NHC scraper
+had been silently rejecting every storm record since day one: the
+scraper looked up `latitude_numeric` (snake_case) while the live NHC
+payload uses `latitudeNumeric` (camelCase). The test fixtures used
+the same snake_case keys, so the tests *agreed with the broken
+implementation* and never caught the production bug. First surfaced
+when TD Cristina hit the EP basin on 2026-06-10.
+
+**Convention going forward:** scraper test fixtures must mirror the
+*external contract* — the actual shape of the third-party API
+response — not the internal representation the scraper is trying to
+produce. Where feasible, save a real fixture captured from the live
+source (golden file) rather than hand-building synthetic dicts, so
+field-name drift between source and code is impossible to encode
+into the test.
