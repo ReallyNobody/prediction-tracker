@@ -77,8 +77,8 @@ def test_coerce_required_int_raises_on_missing() -> None:
 
 
 def test_coerce_required_float_raises_on_unparseable() -> None:
-    with pytest.raises(ValueError, match="latitude_numeric"):
-        _coerce_required_float("WAT", "latitude_numeric")
+    with pytest.raises(ValueError, match="latitudeNumeric"):
+        _coerce_required_float("WAT", "latitudeNumeric")
 
 
 def test_extract_advisory_urls_whitelists_known_keys() -> None:
@@ -166,8 +166,8 @@ def test_normalize_storm_raises_on_missing_required_field(field: str) -> None:
 def test_normalize_storm_raises_on_missing_required_numeric() -> None:
     fixture = _load_fixture()
     raw = fixture["activeStorms"][0].copy()
-    raw.pop("latitude_numeric")
-    with pytest.raises(ValueError, match="latitude_numeric"):
+    raw.pop("latitudeNumeric")
+    with pytest.raises(ValueError, match="latitudeNumeric"):
         _normalize_storm(raw)
 
 
@@ -238,8 +238,8 @@ def test_fetch_active_storms_skips_malformed_storms(
                     "name": "Irma",
                     "classification": "HU",
                     "intensity": 160,
-                    "latitude_numeric": 22.9,
-                    "longitude_numeric": -79.9,
+                    "latitudeNumeric": 22.9,
+                    "longitudeNumeric": -79.9,
                     "lastUpdate": "2017-09-09T15:00:00Z",
                 },
                 # Missing id — should be skipped with a warning.
@@ -247,8 +247,8 @@ def test_fetch_active_storms_skips_malformed_storms(
                     "name": "Ghost",
                     "classification": "TS",
                     "intensity": 50,
-                    "latitude_numeric": 10.0,
-                    "longitude_numeric": -50.0,
+                    "latitudeNumeric": 10.0,
+                    "longitudeNumeric": -50.0,
                     "lastUpdate": "2017-09-09T15:00:00Z",
                 },
                 # Non-object entry — should also be skipped.

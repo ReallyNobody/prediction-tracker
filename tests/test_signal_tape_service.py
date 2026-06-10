@@ -14,7 +14,7 @@ Lock down the contract the JS frontend will rely on:
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -50,7 +50,15 @@ def _add_storm(
     name: str,
     intensity_kt: int,
     status: str = "active",
+    observation_time: datetime | None = None,
 ) -> Storm:
+    # Default observation_time to "12 hours ago" so the seed always falls
+    # inside the signal-tape's 14-day history window regardless of when CI
+    # runs. The original implementation hardcoded 2026-05-10, which silently
+    # rolled out of the window once the calendar passed May 24, breaking
+    # test_history_includes_recent_storms on every run from that point on.
+    if observation_time is None:
+        observation_time = datetime.now(UTC) - timedelta(hours=12)
     storm = Storm(
         nhc_id=f"AL01{name[:4].upper()}",
         name=name,
@@ -63,7 +71,7 @@ def _add_storm(
     db.add(
         StormObservation(
             storm_id=storm.id,
-            observation_time=datetime(2026, 5, 10, 12, 0, tzinfo=UTC),
+            observation_time=observation_time,
             latitude_deg=25.0,
             longitude_deg=-80.0,
             classification="HU" if intensity_kt >= 64 else "TS",
