@@ -209,7 +209,12 @@ def test_latest_hurricane_markets_filters_near_close_markets(
     May 31?" markets sit at 2-4¢ once the answer is essentially settled
     and were cluttering the user-facing list at launch time.
     """
-    now = datetime(2026, 5, 29, 12, 0, tzinfo=UTC)
+    # `now` must be sourced from the actual clock — the filter under test
+    # computes its cutoff via datetime.now(UTC) and a hardcoded fixture
+    # date silently rolls out of the cutoff window once the calendar moves
+    # past it (which is how this test started failing on 2026-06-10 after
+    # being written with a May 29 fixture).
+    now = datetime.now(UTC)
     today = now.date()
     db_session.add_all(
         [
