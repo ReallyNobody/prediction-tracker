@@ -168,8 +168,14 @@ def _normalize_storm(raw: dict[str, Any]) -> NHCStormObservation:
         classification=classification,
         intensity_kt=_coerce_required_int(raw.get("intensity"), "intensity"),
         pressure_mb=_coerce_int(raw.get("pressure")),
-        latitude_deg=_coerce_required_float(raw.get("latitude_numeric"), "latitude_numeric"),
-        longitude_deg=_coerce_required_float(raw.get("longitude_numeric"), "longitude_numeric"),
+        # NHC publishes these as camelCase (latitudeNumeric, longitudeNumeric)
+        # in the activeStorms feed — same as binNumber, movementDir, lastUpdate
+        # below. The original implementation used snake_case here, which
+        # silently rejected every real storm record (off-season the feed is
+        # empty so this never surfaced). First caught when TD Cristina hit
+        # the EP basin on 2026-06-10.
+        latitude_deg=_coerce_required_float(raw.get("latitudeNumeric"), "latitudeNumeric"),
+        longitude_deg=_coerce_required_float(raw.get("longitudeNumeric"), "longitudeNumeric"),
         movement_dir_deg=_coerce_int(raw.get("movementDir")),
         movement_speed_mph=_coerce_int(raw.get("movementSpeed")),
         last_update=_parse_iso8601_utc(last_update_raw),
