@@ -29,10 +29,11 @@ def test_index_returns_html_with_panel_shells(client: TestClient) -> None:
     # three data layers explicitly.
     assert "Hurricane Risk, Markets and Models Dashboard" in body
 
-    # Eight panels: six original + the Day 12 landfall map + the Day
-    # 44b Signal Tape wrapper. The ``panel-shell`` class appears once
-    # in the <style> block plus once per panel, so nine matches total.
-    assert body.count("panel-shell") == 9
+    # Ten panels: six original + the Day 12 landfall map + the Day
+    # 44b Signal Tape wrapper + Phase 2 Panel 7 (cat-losses) + Phase 2
+    # Panel 8 (heat-map). The ``panel-shell`` class appears once in the
+    # <style> block plus once per panel, so eleven matches total.
+    assert body.count("panel-shell") == 11
 
     # Each panel heading is present. Day 14 renamed Carrier Exposure →
     # Companies on the line; Day 15 renamed Cat Bond Spreads → Cat bond
