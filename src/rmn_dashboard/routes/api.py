@@ -21,10 +21,12 @@ from sqlalchemy.orm import Session
 
 from rmn_dashboard.data.universe import Sector
 from rmn_dashboard.database import get_session
+from rmn_dashboard.services.cat_losses import recent_event_payload
 from rmn_dashboard.services.count_curve import compute_count_curve
 from rmn_dashboard.services.daily_changes import todays_changes
 from rmn_dashboard.services.equity_quotes import latest_universe_quotes
 from rmn_dashboard.services.forecasts import active_storm_forecasts
+from rmn_dashboard.services.heat_map import heat_map_payload
 from rmn_dashboard.services.historical_analogs import find_analogs
 from rmn_dashboard.services.signal_tape import compute_signal_tape
 
@@ -332,3 +334,100 @@ def get_count_curve(
     handles that with a one-line caption rather than a broken axis.
     """
     return compute_count_curve(db, season=season)
+
+
+@router.get("/cat-losses/recent")
+def get_recent_cat_loss_event(db: Session = Depends(get_session)) -> dict[str, object]:
+    """Return the panel-ready payload for Panel 7 — modeler loss estimates.
+
+    Two modes reflected in the ``mode`` field:
+
+      * ``active`` — an active storm in the current season matches a
+        curated event in ``data/cat_loss_estimates.yaml`` by name
+        (case-insensitive suffix match). The panel renders an "incoming
+        estimates" framing while modelers publish their numbers.
+      * ``offseason`` — no active match, so the panel renders the
+        most-recent prior event by year. Same UI scaffold either way;
+        the JS branches on ``mode`` for framing copy only.
+
+    Response shape::
+
+        {
+          "mode": "active" | "offseason",
+          "framing": "Modelers are publishing estimates for this event"
+                    | "Most recent event with modeled losses",
+          "event": {
+            "event_name":  "Hurricane Helene",
+            "year":        2024,
+            "estimates": [
+              {
+                "modeler":              "Karen Clark & Company",
+                "low_usd_billions":     6.4,
+                "high_usd_billions":    6.4,
+                "midpoint_usd_billions": 6.4,
+                "is_point_estimate":    true,
+                "issued_at":            "2024-10-02",
+                "source_url":           "https://...",
+                "refinement_note":      "Point estimate ..."
+              },
+              ...
+            ],
+            "trajectory": [ /* all estimates including prior refinements */ ],
+            "consensus_midpoint_usd_billions": 11.7,
+            "dispersion_usd_billions":         4.5,
+            "modeler_count":                   3
+          }
+        }
+
+    ``event: null`` is the empty-YAML defensive case — the panel renders
+    a one-line caption rather than a broken layout.
+    """
+    return recent_event_payload(db)
+
+
+@router.get("/heat-map/prediction-markets")
+def get_prediction_market_heat_map(
+    db: Session = Depends(get_session),
+) -> dict[str, object]:
+    """Return the panel-ready payload for Panel 8 — prediction-market heat-map.
+
+    Each cell is the intersection of one platform (row) and one canonical
+    hurricane question (column). Cell values: current yes-price (cents),
+    day-over-day delta in cents, and 24h volume. Cells where the
+    platform doesn't carry a question are still present in the response
+    so the JS renderer's grid stays uniform — they're flagged via
+    ``has_data: false`` and ``missing_reason: "platform_does_not_carry"``.
+
+    ``is_quiet`` flips true when average absolute delta across cells
+    with data is below the editorial threshold (~1 cent). The panel
+    swaps in a "Markets are quiet" caption rather than implying activity
+    a cool-colored grid would otherwise suggest.
+
+    Response shape::
+
+        {
+          "as_of":     "2026-06-15T14:30:00+00:00",
+          "framing":   "Day-over-day price moves across prediction markets",
+          "platforms": ["kalshi", "polymarket"],
+          "questions": [
+            {"id": "atlantic-count-ge-5",
+             "short_label": "Count ≥5",
+             "long_label":  "Atlantic named storms ≥5 for the 2026 season",
+             "category":    "count"},
+            ...
+          ],
+          "cells": [
+            {"platform":        "kalshi",
+             "question_id":     "atlantic-count-ge-5",
+             "ticker":          "KXHURCTOT-26DEC01-T5",
+             "yes_price":       78.0,
+             "delta_24h":       -3.5,
+             "volume_24h":      1234.0,
+             "has_data":        true,
+             "missing_reason":  null},
+            ...
+          ],
+          "is_quiet": false
+        }
+    """
+    return heat_map_payload(db)

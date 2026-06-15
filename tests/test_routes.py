@@ -214,6 +214,73 @@ def test_analogs_endpoint_returns_offseason_payload(client: TestClient) -> None:
     assert len(body["analogs"]) >= 1
 
 
+def test_cat_losses_recent_endpoint_returns_offseason_payload(client: TestClient) -> None:
+    """``/api/v1/cat-losses/recent`` on a fresh DB (no active storms)
+    responds in offseason mode with the most recent curated event."""
+    response = client.get("/api/v1/cat-losses/recent")
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body.keys()) == {"mode", "framing", "event"}
+    assert body["mode"] == "offseason"
+    event = body["event"]
+    assert event is not None
+    expected_event_keys = {
+        "event_name",
+        "year",
+        "estimates",
+        "trajectory",
+        "consensus_midpoint_usd_billions",
+        "dispersion_usd_billions",
+        "modeler_count",
+    }
+    assert set(event.keys()) == expected_event_keys
+    # Seed launches with 2024 events as the most recent — should be one
+    # of those.
+    assert event["year"] == 2024
+    assert isinstance(event["estimates"], list)
+    assert len(event["estimates"]) == event["modeler_count"]
+
+
+def test_heat_map_endpoint_returns_expected_shape(client: TestClient) -> None:
+    """``/api/v1/heat-map/prediction-markets`` on a fresh DB (no
+    snapshots) returns the top-level shape Panel 8's JS reads, with
+    is_quiet=True (no comparisons available)."""
+    response = client.get("/api/v1/heat-map/prediction-markets")
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body.keys()) == {
+        "as_of",
+        "framing",
+        "platforms",
+        "questions",
+        "cells",
+        "is_quiet",
+    }
+    assert "kalshi" in body["platforms"]
+    assert "polymarket" in body["platforms"]
+    # Cells = platforms × questions, no holes.
+    assert len(body["cells"]) == len(body["platforms"]) * len(body["questions"])
+    # Fresh DB → no snapshots → is_quiet true so the panel renders its
+    # "Markets are quiet" caption.
+    assert body["is_quiet"] is True
+
+
+def test_index_wires_up_cat_losses_panel(client: TestClient) -> None:
+    """Panel 7 (Modeled losses) ships its readout container, empty state,
+    framing element, and the loader script.
+
+    Smoke test only — no JS exercised. ``panel_cat_losses.js`` targets
+    each of these IDs by string and pulls /api/v1/cat-losses/recent, so
+    losing any of them silently breaks the panel.
+    """
+    body = client.get("/").text
+    assert 'id="cat-losses-readout"' in body
+    assert 'id="cat-losses-empty"' in body
+    assert 'id="cat-losses-framing"' in body
+    assert 'data-testid="cat-losses-panel"' in body
+    assert "/static/js/panel_cat_losses.js" in body
+
+
 def test_index_wires_up_signal_tape(client: TestClient) -> None:
     """Day 43: the page-top Signal Tape ships its mount container and
     the loader script. Smoke test only — no JS exercised here."""
