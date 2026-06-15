@@ -1,0 +1,54 @@
+# Prediction-market heat-map — canonical question registry.
+#
+# Source of truth for the Panel 8 cross-platform heat-map. Each
+# canonical question represents one hurricane outcome (e.g., "Atlantic
+# named storms ≥ 7") matched across the prediction-market platforms
+# that carry it.
+#
+# Editorial bar:
+#   * Each entry maps a canonical question to platform-specific tickers.
+#     The cross-platform match must be semantically tight — same window
+#     (calendar year, season), same outcome (count threshold, date, ACE
+#     value), same resolution authority (NHC vs proprietary).
+#   * Where platforms differ on resolution criteria, the question still
+#     gets one row but the long_label spells out the divergence.
+#   * A canonical question with only one platform is fine — the heat-map
+#     renders an empty cell for the missing platform rather than hiding
+#     the row. The information that "Kalshi carries this but Polymarket
+#     doesn't" is itself editorially useful.
+#
+# Session 4 work: editorial backfill expands this to 5-8 canonical
+# questions with verified tickers and slugs. The three entries below are
+# the launch seed, shaped to exercise the three structural cases:
+# Kalshi-only, both, Polymarket-only.
+
+version: 1
+last_reviewed: 2026-06-15
+
+questions:
+
+  # Case: both platforms carry this question.
+  - id: atlantic-count-ge-5
+    short_label: "Count ≥5"
+    long_label: "Atlantic named storms ≥5 for the 2026 season"
+    category: count
+    platforms:
+      kalshi: KXHURCTOT-26DEC01-T5
+      polymarket: will-there-be-5-or-more-named-storms-in-2026
+
+  # Case: Kalshi carries the count threshold, Polymarket doesn't.
+  - id: atlantic-count-ge-7
+    short_label: "Count ≥7"
+    long_label: "Atlantic named storms ≥7 for the 2026 season"
+    category: count
+    platforms:
+      kalshi: KXHURCTOT-26DEC01-T7
+
+  # Case: Polymarket-only — "by date X" questions are a Polymarket
+  # native frame, Kalshi tends not to carry them.
+  - id: first-hurricane-by-aug-1
+    short_label: "1st by Aug 1"
+    long_label: "First Atlantic hurricane formed on or before August 1, 2026"
+    category: timing
+    platforms:
+      polymarket: will-an-atlantic-hurricane-form-by-august-1
