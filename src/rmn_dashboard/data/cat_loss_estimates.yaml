@@ -1,0 +1,144 @@
+# =====================================================================
+# cat_loss_estimates.yaml
+# =====================================================================
+#
+# Curated set of post-event insured-loss estimates from the major
+# catastrophe modeling firms. Powers Panel 7 ("Modeled losses") — the
+# after-event complement to the existing before/during panels. When a
+# major event lands, the panel renders incoming modeler ranges
+# alongside one another so readers see the consensus mid-point and the
+# dispersion across firms. Off-season the panel renders the most-recent
+# event with completed estimates.
+#
+# Why manual curation over scraping: see
+# docs/post_event_loss_estimates_memo.md. Tier 1 lives here; Tier 2
+# scraping earns its complexity only if the editorial bottleneck bites
+# during a busy season.
+#
+# Field reference:
+#   event_name           Common name. Matches the analogs YAML format
+#                        ("Hurricane Foo", not "Foo").
+#   year                 Calendar year of US landfall (or last impact).
+#   estimates            One entry per (modeler, issuance) pair. Same
+#                        modeler can appear multiple times if they have
+#                        refined the estimate over time — the latest
+#                        by issued_at is the current view; earlier
+#                        rows preserve the trajectory.
+#
+#   per-estimate:
+#     modeler            One of the known firms (see _KNOWN_MODELERS
+#                        in data/cat_losses.py). New firms get added
+#                        to the constant first.
+#     low_usd_billions   Low end of the modeler's published range.
+#     high_usd_billions  High end. Must be >= low.
+#     issued_at          Date the modeler published this estimate.
+#     source_url         Link to the release / press item.
+#     refinement_note    Optional editorial note ("initial estimate",
+#                        "first refinement", "final post-event review",
+#                        or context on methodology change).
+#
+# Editorial framing rule: numbers are facts and not copyrightable, but
+# prose around them belongs to the modelers. Keep refinement_note
+# editorial — paraphrase, don't reproduce release language verbatim.
+# =====================================================================
+
+version: 1
+last_reviewed: 2026-06-12
+
+events:
+
+  - event_name: Hurricane Ian
+    year: 2022
+    estimates:
+      - modeler: Moody's RMS
+        low_usd_billions: 53.0
+        high_usd_billions: 74.0
+        issued_at: 2022-09-30
+        source_url: https://www.rms.com/newsroom
+        refinement_note: Initial estimate, days after FL landfall.
+      - modeler: Moody's RMS
+        low_usd_billions: 50.0
+        high_usd_billions: 65.0
+        issued_at: 2022-10-31
+        source_url: https://www.rms.com/newsroom
+        refinement_note: First refinement; tightened on the back of claims data.
+      - modeler: Verisk
+        low_usd_billions: 42.0
+        high_usd_billions: 57.0
+        issued_at: 2022-10-03
+        source_url: https://www.verisk.com/newsroom
+        refinement_note: Initial estimate post-landfall.
+      - modeler: Karen Clark & Company
+        low_usd_billions: 63.0
+        high_usd_billions: 63.0
+        issued_at: 2022-09-30
+        source_url: https://www.karenclarkandco.com/news
+        refinement_note: Point estimate (KCC convention). Highest of the four firms.
+      - modeler: CoreLogic
+        low_usd_billions: 41.0
+        high_usd_billions: 53.0
+        issued_at: 2022-10-04
+        source_url: https://www.corelogic.com/intelligence
+        refinement_note: Wind and storm-surge insured losses combined.
+
+  - event_name: Hurricane Helene
+    year: 2024
+    estimates:
+      - modeler: Moody's RMS
+        low_usd_billions: 9.0
+        high_usd_billions: 13.0
+        issued_at: 2024-10-04
+        source_url: https://www.rms.com/newsroom
+        refinement_note: Initial estimate. Private-market insured only; excludes NFIP.
+      - modeler: Verisk
+        low_usd_billions: 9.5
+        high_usd_billions: 15.5
+        issued_at: 2024-10-07
+        source_url: https://www.verisk.com/newsroom
+        refinement_note: Initial estimate. Combined wind + storm surge + inland flood.
+      - modeler: Karen Clark & Company
+        low_usd_billions: 6.4
+        high_usd_billions: 6.4
+        issued_at: 2024-10-02
+        source_url: https://www.karenclarkandco.com/news
+        refinement_note: Point estimate. Excludes inland-flood damage in Appalachia.
+
+  - event_name: Hurricane Milton
+    year: 2024
+    estimates:
+      - modeler: Moody's RMS
+        low_usd_billions: 22.0
+        high_usd_billions: 36.0
+        issued_at: 2024-10-15
+        source_url: https://www.rms.com/newsroom
+        refinement_note: Initial estimate, days after Siesta Key landfall.
+      - modeler: Verisk
+        low_usd_billions: 30.0
+        high_usd_billions: 50.0
+        issued_at: 2024-10-18
+        source_url: https://www.verisk.com/newsroom
+        refinement_note: Initial estimate. Range reflects uncertainty on inland-track damage.
+      - modeler: Karen Clark & Company
+        low_usd_billions: 36.0
+        high_usd_billions: 36.0
+        issued_at: 2024-10-14
+        source_url: https://www.karenclarkandco.com/news
+        refinement_note: Point estimate. Wind + surge + inland flood + auto.
+      - modeler: CoreLogic
+        low_usd_billions: 17.0
+        high_usd_billions: 28.0
+        issued_at: 2024-10-17
+        source_url: https://www.corelogic.com/intelligence
+        refinement_note: Initial estimate. Lowest of the four; consistent with their
+          Ian 2022 placement at the bottom of the modeler band.
+
+# =====================================================================
+# Backfill TODO (per memo — 2 evenings of curation):
+#   - Hurricane Harvey 2017 (TX)
+#   - Hurricane Irma 2017 (FL)
+#   - Hurricane Maria 2017 (PR)
+#   - Hurricane Michael 2018 (FL Panhandle)
+#   - Hurricane Laura 2020 (LA)
+#   - Hurricane Ida 2021 (LA + NE remnants)
+#   - Hurricane Idalia 2023 (FL Big Bend)
+# =====================================================================
