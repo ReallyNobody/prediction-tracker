@@ -241,6 +241,25 @@ def test_cat_losses_recent_endpoint_returns_offseason_payload(client: TestClient
     assert len(event["estimates"]) == event["modeler_count"]
 
 
+def test_index_wires_up_heat_map_panel(client: TestClient) -> None:
+    """Panel 8 (Prediction-market heat-map) ships its readout container,
+    empty state, framing element, quietness caption, and the loader
+    script.
+
+    Smoke test only — no JS exercised. ``panel_heat_map.js`` targets
+    each of these IDs by string and pulls
+    /api/v1/heat-map/prediction-markets, so losing any of them silently
+    breaks the panel.
+    """
+    body = client.get("/").text
+    assert 'id="heat-map-readout"' in body
+    assert 'id="heat-map-empty"' in body
+    assert 'id="heat-map-framing"' in body
+    assert 'id="heat-map-caption"' in body
+    assert 'data-testid="heat-map-panel"' in body
+    assert "/static/js/panel_heat_map.js" in body
+
+
 def test_heat_map_endpoint_returns_expected_shape(client: TestClient) -> None:
     """``/api/v1/heat-map/prediction-markets`` on a fresh DB (no
     snapshots) returns the top-level shape Panel 8's JS reads, with
