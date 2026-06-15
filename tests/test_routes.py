@@ -241,6 +241,49 @@ def test_cat_losses_recent_endpoint_returns_offseason_payload(client: TestClient
     assert len(event["estimates"]) == event["modeler_count"]
 
 
+def test_embed_signal_tape_returns_minimal_html(client: TestClient) -> None:
+    """The /embed/signal-tape route serves a standalone HTML doc with
+    the Signal Tape mount + loader, no dashboard chrome (header,
+    footer, RMN nav) leaking in."""
+    response = client.get("/embed/signal-tape")
+    assert response.status_code == 200
+    body = response.text
+    # Contract IDs: the mount div the loader targets.
+    assert 'id="signal-tape"' in body
+    assert "/static/js/signal_tape.js" in body
+    # noindex so the embed itself doesn't compete with the canonical
+    # dashboard URL for ranking.
+    assert 'name="robots"' in body
+    assert "noindex" in body
+    # Caption link out to the full dashboard. target="_top" breaks the
+    # iframe when a reader clicks through.
+    assert "View full dashboard" in body
+    assert 'target="_top"' in body
+    # The RMN header lockup should NOT be present — the embed strips it.
+    assert "rmn-wordmark" not in body
+
+
+def test_embed_signal_tape_sets_frame_ancestors_policy(client: TestClient) -> None:
+    """Browsers respect CSP frame-ancestors on a per-resource basis;
+    losing this header would let any site iframe the embed (mild
+    click-jacking risk on links inside the band)."""
+    response = client.get("/embed/signal-tape")
+    assert response.status_code == 200
+    csp = response.headers.get("Content-Security-Policy", "")
+    assert "frame-ancestors" in csp
+    assert "https://www.riskmarketnews.com" in csp
+    assert "https://riskmarketnews.com" in csp
+
+
+def test_embed_signal_tape_is_uncached(client: TestClient) -> None:
+    """The embed shell HTML must always render fresh — the inner JSON
+    has its own cache semantics. Stale shells during a deploy would
+    embed the old loader bundle even after the dashboard updates."""
+    response = client.get("/embed/signal-tape")
+    cache_control = response.headers.get("Cache-Control", "")
+    assert "no-cache" in cache_control
+
+
 def test_index_wires_up_heat_map_panel(client: TestClient) -> None:
     """Panel 8 (Prediction-market heat-map) ships its readout container,
     empty state, framing element, quietness caption, and the loader

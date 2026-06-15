@@ -130,6 +130,53 @@ async def index(
     )
 
 
+# Allow-list of hosts permitted to embed dashboard widgets in iframes.
+# The CSP frame-ancestors directive emitted on embed routes restricts
+# framing to exactly these origins — keeps a malicious site from
+# pulling our widgets into a click-jacking frame. Apex + www cover the
+# Ghost site; the hurricane subdomain is included so embed pages can be
+# previewed inside the dashboard itself during development.
+_EMBED_FRAME_ANCESTORS = (
+    "'self' "
+    "https://www.riskmarketnews.com "
+    "https://riskmarketnews.com "
+    "https://hurricane.riskmarketnews.com"
+)
+
+
+@app.api_route("/embed/signal-tape", methods=["GET", "HEAD"], response_class=HTMLResponse)
+async def embed_signal_tape(request: Request) -> HTMLResponse:
+    """Standalone Signal Tape embed for external sites.
+
+    Serves a minimal HTML page (no header, no nav, transparent body)
+    containing just the Signal Tape band — designed for iframe embed
+    on the riskmarketnews.com Ghost homepage. Reuses the production
+    /api/v1/signal-tape endpoint and the /static/js/signal_tape.js
+    loader, so any future improvement to the Signal Tape on the
+    dashboard ships here automatically.
+
+    Security: emits a Content-Security-Policy frame-ancestors directive
+    restricting which origins can iframe this page. Browsers respect
+    this on a per-resource basis; the rest of the dashboard remains
+    framing-restricted by whatever default policy is in place upstream.
+    No X-Frame-Options is set on the embed (it doesn't support multiple
+    hosts; CSP is the modern path).
+
+    Cache: Cache-Control: no-cache so the embed always returns a fresh
+    HTML shell — the JSON the iframe content fetches has its own cache
+    semantics on /api/v1/signal-tape. We don't want the host page
+    serving a stale embed shell during a deploy.
+    """
+    response = templates.TemplateResponse(
+        request,
+        "embed_signal_tape.html",
+        {},
+    )
+    response.headers["Content-Security-Policy"] = f"frame-ancestors {_EMBED_FRAME_ANCESTORS}"
+    response.headers["Cache-Control"] = "no-cache, max-age=0, must-revalidate"
+    return response
+
+
 _ROBOTS_TXT = (
     "User-agent: *\n"
     "Allow: /\n"

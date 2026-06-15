@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RMN Signal Tape — embed</title>
+
+    {#
+      Embed-mode template — NOT extending base.html on purpose.
+
+      Standalone minimal document designed to live inside an iframe on
+      external sites (the riskmarketnews.com Ghost homepage being the
+      first known consumer). Everything that's not directly needed to
+      render the Signal Tape band has been stripped:
+
+        * No OG / Twitter meta — embed gets indexed via the host page,
+          not standalone. noindex below makes that explicit.
+        * No Plausible — the dashboard tracks its own pageviews; the
+          embed's analytics belong to the host site.
+        * No Leaflet / Plotly / HTMX — Signal Tape is pure SVG.
+        * No header / footer / RMN nav chrome — host page provides
+          its own surrounding context.
+        * Transparent body background so the iframe blends with
+          whatever the host page paints behind it.
+
+      Reuses the production /static/js/signal_tape.js loader and the
+      /api/v1/signal-tape JSON endpoint. Zero new business logic; the
+      mount div ID matches what the loader expects, so any future
+      improvement to the dashboard's Signal Tape ships here
+      automatically.
+
+      Iframe sizing: the host iframe element sets the box; this
+      document lets its content flow inside it. The Signal Tape band
+      is a fixed-height affair (~120px desktop), and the recommended
+      iframe markup hardcodes that, so we don't need cross-origin
+      postMessage auto-resize gymnastics.
+    #}
+
+    <meta name="robots" content="noindex,follow" />
+    <meta name="referrer" content="no-referrer-when-downgrade" />
+
+    {#
+      Brand fonts — same Inter + Source Serif 4 as base.html so the
+      Signal Tape text in the embed renders identically to its
+      in-dashboard counterpart. Preconnect saves first-paint time on
+      cold cache.
+    #}
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:wght@400;700;900&display=swap"
+      rel="stylesheet"
+    />
+
+    {# Tailwind CDN — the signal_tape.js renderer uses Tailwind classes. #}
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      {#
+        Brand variables copied verbatim from base.html. We don't share
+        a CSS file (the dashboard inlines its style block), so the
+        embed has its own copy. If base.html's brand variables move to
+        a stylesheet, swap this for a <link> to that file.
+      #}
+      :root {
+        --rmn-cream: #F7F4F1;
+        --rmn-blue: #6B8BB1;
+        --rmn-divider: #C47B5F;
+
+        --rmn-tier-quiet: #888780;
+        --rmn-tier-watching: #C47B5F;
+        --rmn-tier-active: #A0533D;
+        --rmn-tier-severe: #7A2E1E;
+
+        --rmn-direction-negative: #7A2E1E;
+        --rmn-direction-positive: #3B6D11;
+      }
+
+      html, body {
+        font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+
+      {#
+        Transparent body so the iframe blends with the host page's
+        background. The host can sit it on cream, white, anything —
+        the Signal Tape inner card brings its own white surface.
+      #}
+      body {
+        background: transparent;
+        margin: 0;
+        padding: 0;
+      }
+
+      {#
+        Embed-only wrapper. Slight inset padding so the inner card
+        doesn't touch the iframe edge if the host doesn't add its own
+        padding.
+      #}
+      .embed-wrap {
+        padding: 4px;
+      }
+
+      {#
+        "View full dashboard →" caption styling. Calm and quiet —
+        editorial-side caption per HayWire's "View all 69 markets →"
+        pattern under their USDA table. Neutral slate, no underline by
+        default, underline on hover.
+      #}
+      .embed-caption {
+        font-size: 11px;
+        color: #64748b;
+        text-align: right;
+        padding: 6px 8px 0;
+      }
+      .embed-caption a {
+        color: var(--rmn-blue);
+        text-decoration: none;
+      }
+      .embed-caption a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body class="text-slate-900 antialiased">
+    <div class="embed-wrap">
+      {#
+        Same panel-shell card treatment as the in-dashboard Signal Tape
+        so the embed renders identically. Re-uses the #signal-tape mount
+        ID that signal_tape.js targets — that ID is the contract between
+        the loader and the markup.
+      #}
+      <section class="panel-shell rounded-lg border border-slate-200 bg-white p-4">
+        <div id="signal-tape" data-testid="signal-tape">
+          <div class="text-xs text-slate-400">Loading signal tape…</div>
+        </div>
+      </section>
+      <p class="embed-caption">
+        <a href="https://hurricane.riskmarketnews.com/" target="_top" rel="noopener">
+          View full dashboard →
+        </a>
+      </p>
+    </div>
+
+    {#
+      target="_top" on the caption link is intentional — when the
+      embed is in an iframe, the default link behavior would open the
+      dashboard inside the iframe. _top breaks out of the iframe and
+      replaces the host page, which is what a reader clicking
+      "View full dashboard →" expects.
+    #}
+
+    <script src="{{ url_for('static', path='/js/signal_tape.js') }}" defer></script>
+  </body>
+</html>
