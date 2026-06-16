@@ -57,6 +57,15 @@ from rmn_dashboard.data.heat_map import (
 )
 from rmn_dashboard.models import PredictionMarket
 
+# Both scrapers persist yes_price as 0.0-1.0 dollars (Polymarket via
+# its JSON-encoded outcomePrices parse, Kalshi via the cents → dollar
+# division upstream). The heat-map API contract is 0-100 cents — that's
+# what the JS renderer formats with the "¢" suffix and what the
+# diverging color scale was tuned for. We scale dollars → cents here
+# at the service boundary so the DB layer and the API surface can
+# disagree without either having to compromise.
+_DOLLARS_TO_CENTS = 100.0
+
 # Pair-snapshot cushion. The cron ingestor doesn't run at exactly the
 # same wall-clock second every day, so demanding "exactly 24h apart"
 # would miss valid yesterday-snapshots by a few minutes. 23h is the
@@ -185,11 +194,14 @@ def _build_cell(
         db, platform=platform, ticker=ticker, today_ts=today.last_updated
     )
 
-    base["yes_price"] = today.yes_price
+    # Scale 0.0-1.0 dollar prices into the 0-100 cents the API
+    # contract documents. The renderer formats with "¢" and the
+    # color scale expects cent-magnitude deltas.
+    base["yes_price"] = today.yes_price * _DOLLARS_TO_CENTS if today.yes_price is not None else None
     base["volume_24h"] = today.volume_24h
     base["has_data"] = today.yes_price is not None
     if yesterday is not None and yesterday.yes_price is not None and today.yes_price is not None:
-        base["delta_24h"] = today.yes_price - yesterday.yes_price
+        base["delta_24h"] = (today.yes_price - yesterday.yes_price) * _DOLLARS_TO_CENTS
     return base
 
 

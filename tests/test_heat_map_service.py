@@ -16,6 +16,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import pytest
 from sqlalchemy.orm import Session
 
 from rmn_dashboard.data.heat_map import HeatMapQuestions
@@ -71,14 +72,20 @@ def _snapshot(
     when: datetime,
     volume_24h: float | None = 1000.0,
 ) -> None:
-    """Insert one PredictionMarket snapshot row."""
+    """Insert one PredictionMarket snapshot row.
+
+    ``yes_price`` is in the storage convention (0.0-1.0 dollars), matching
+    both Kalshi and Polymarket scrapers. The service scales to cents at
+    the API boundary; downstream assertions on cell["yes_price"] expect
+    the scaled (0-100 cent) value.
+    """
     row = PredictionMarket(
         platform=platform,
         ticker=ticker,
         title=f"{ticker} title",
         category="hurricane",
         yes_price=yes_price,
-        no_price=(100.0 - yes_price) if yes_price is not None else None,
+        no_price=(1.0 - yes_price) if yes_price is not None else None,
         volume_24h=volume_24h,
         last_updated=when,
     )
@@ -126,24 +133,25 @@ def test_questions_include_metadata(db_session: Session) -> None:
 
 def test_cell_with_two_snapshots_24h_apart_has_delta(db_session: Session) -> None:
     now = datetime(2026, 6, 15, 12, 0, tzinfo=UTC)
+    # Storage convention is 0.0-1.0 dollars; service scales to 0-100 cents.
     _snapshot(
         db_session,
         platform="kalshi",
         ticker="KX-T5",
-        yes_price=72.0,
+        yes_price=0.72,
         when=now - timedelta(hours=24),
     )
     _snapshot(
         db_session,
         platform="kalshi",
         ticker="KX-T5",
-        yes_price=78.0,
+        yes_price=0.78,
         when=now,
     )
     payload = heat_map_payload(db_session, questions=_doc([_q_both()]), now=now)
     cell = next(c for c in payload["cells"] if c["platform"] == "kalshi")
-    assert cell["yes_price"] == 78.0
-    assert cell["delta_24h"] == 6.0
+    assert cell["yes_price"] == pytest.approx(78.0)
+    assert cell["delta_24h"] == pytest.approx(6.0)
     assert cell["has_data"] is True
 
 
@@ -155,13 +163,13 @@ def test_yesterday_snapshot_inside_23h_window_is_rejected(db_session: Session) -
         db_session,
         platform="kalshi",
         ticker="KX-T5",
-        yes_price=72.0,
+        yes_price=0.72,
         when=now - timedelta(hours=20),  # too fresh
     )
-    _snapshot(db_session, platform="kalshi", ticker="KX-T5", yes_price=78.0, when=now)
+    _snapshot(db_session, platform="kalshi", ticker="KX-T5", yes_price=0.78, when=now)
     payload = heat_map_payload(db_session, questions=_doc([_q_both()]), now=now)
     cell = next(c for c in payload["cells"] if c["platform"] == "kalshi")
-    assert cell["yes_price"] == 78.0
+    assert cell["yes_price"] == pytest.approx(78.0)
     assert cell["delta_24h"] is None  # no valid pair
 
 
@@ -173,10 +181,10 @@ def test_yesterday_snapshot_older_than_36h_is_rejected(db_session: Session) -> N
         db_session,
         platform="kalshi",
         ticker="KX-T5",
-        yes_price=60.0,
+        yes_price=0.60,
         when=now - timedelta(hours=48),  # too stale
     )
-    _snapshot(db_session, platform="kalshi", ticker="KX-T5", yes_price=78.0, when=now)
+    _snapshot(db_session, platform="kalshi", ticker="KX-T5", yes_price=0.78, when=now)
     payload = heat_map_payload(db_session, questions=_doc([_q_both()]), now=now)
     cell = next(c for c in payload["cells"] if c["platform"] == "kalshi")
     assert cell["delta_24h"] is None
@@ -190,21 +198,21 @@ def test_yesterday_picks_latest_in_window_when_multiple_match(db_session: Sessio
         db_session,
         platform="kalshi",
         ticker="KX-T5",
-        yes_price=70.0,
+        yes_price=0.70,
         when=now - timedelta(hours=35),
     )
     _snapshot(
         db_session,
         platform="kalshi",
         ticker="KX-T5",
-        yes_price=73.0,
+        yes_price=0.73,
         when=now - timedelta(hours=24),  # latest in window
     )
-    _snapshot(db_session, platform="kalshi", ticker="KX-T5", yes_price=78.0, when=now)
+    _snapshot(db_session, platform="kalshi", ticker="KX-T5", yes_price=0.78, when=now)
     payload = heat_map_payload(db_session, questions=_doc([_q_both()]), now=now)
     cell = next(c for c in payload["cells"] if c["platform"] == "kalshi")
     # Delta from 73 (the closer yesterday) → 78, not 70 → 78.
-    assert cell["delta_24h"] == 5.0
+    assert cell["delta_24h"] == pytest.approx(5.0)
 
 
 # ---- Empty / missing cases -----------------------------------------------
@@ -243,10 +251,10 @@ def test_single_snapshot_renders_price_without_delta(db_session: Session) -> Non
     """Fresh deploy: only one snapshot exists. Cell shows the price but
     no delta — better than hiding the cell."""
     now = datetime(2026, 6, 15, 12, 0, tzinfo=UTC)
-    _snapshot(db_session, platform="kalshi", ticker="KX-T5", yes_price=78.0, when=now)
+    _snapshot(db_session, platform="kalshi", ticker="KX-T5", yes_price=0.78, when=now)
     payload = heat_map_payload(db_session, questions=_doc([_q_both()]), now=now)
     cell = next(c for c in payload["cells"] if c["platform"] == "kalshi")
-    assert cell["yes_price"] == 78.0
+    assert cell["yes_price"] == pytest.approx(78.0)
     assert cell["delta_24h"] is None
     assert cell["has_data"] is True
     assert cell["missing_reason"] is None
@@ -267,30 +275,34 @@ def test_is_quiet_true_when_no_deltas(db_session: Session) -> None:
 def test_is_quiet_true_when_avg_delta_under_threshold(db_session: Session) -> None:
     """Small moves on a single market still count as 'quiet'."""
     now = datetime(2026, 6, 15, 12, 0, tzinfo=UTC)
+    # 0.778 - 0.775 = 0.003 dollars → 0.3 cents after scaling — below
+    # the 1.0-cent quietness threshold.
     _snapshot(
         db_session,
         platform="kalshi",
         ticker="KX-T5",
-        yes_price=78.0,
+        yes_price=0.775,
         when=now - timedelta(hours=24),
     )
-    _snapshot(db_session, platform="kalshi", ticker="KX-T5", yes_price=78.3, when=now)
+    _snapshot(db_session, platform="kalshi", ticker="KX-T5", yes_price=0.778, when=now)
     payload = heat_map_payload(db_session, questions=_doc([_q_both()]), now=now)
-    assert payload["is_quiet"] is True  # 0.3 cents avg < 1.0
+    assert payload["is_quiet"] is True
 
 
 def test_is_quiet_false_when_avg_delta_over_threshold(db_session: Session) -> None:
     now = datetime(2026, 6, 15, 12, 0, tzinfo=UTC)
+    # 0.78 - 0.70 = 0.08 dollars → 8 cents after scaling — above the
+    # 1.0-cent quietness threshold.
     _snapshot(
         db_session,
         platform="kalshi",
         ticker="KX-T5",
-        yes_price=70.0,
+        yes_price=0.70,
         when=now - timedelta(hours=24),
     )
-    _snapshot(db_session, platform="kalshi", ticker="KX-T5", yes_price=78.0, when=now)
+    _snapshot(db_session, platform="kalshi", ticker="KX-T5", yes_price=0.78, when=now)
     payload = heat_map_payload(db_session, questions=_doc([_q_both()]), now=now)
-    assert payload["is_quiet"] is False  # 8 cents > 1.0
+    assert payload["is_quiet"] is False
 
 
 # ---- Top-level shape ----------------------------------------------------
