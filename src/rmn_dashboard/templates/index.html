@@ -63,40 +63,113 @@
   </section>
 
   {#
-    Day 41: "What changed today" promoted from the bottom of the
-    page to a full-width band immediately under the page header.
-    Editorial reasoning: the dashboard's primary returning audience
-    is daily checkers (newsletter readers, beta testers, anyone
-    clicking through during an active storm) and the lede question
-    for that audience is "what's changed since I last looked,"
-    not "what's the cone shape today." The Risk Tape that lands here
-    is also the most visually distinctive element on the page; the
-    front position lets it carry the brand weight it deserves. The
-    cone map and exposure panels keep the same relative order in
-    the grid below — they remain logically the next layer of detail.
+    Phase 2 hero band (June 16 2026 restack) — Modeled Losses + Heat Map
+    paired side-by-side. Previously this slot was the Day 41 "What
+    changed today" band; that's been demoted into the grid below.
+
+    Editorial reasoning: the dashboard's strongest editorial signal is
+    the pair of expert-lens views — Modeled Losses (the insurance-side
+    view: what the four major modeling firms are publishing) and the
+    Prediction-Market Heat Map (the market-side view: what trading
+    capital is pricing). Nobody else surfaces either of these as
+    accessibly as RMN does. Elevating them above the multi-column grid
+    reinforces the dashboard's positioning as a translation layer.
+
+    "What changed today" still earns its keep as a returning-reader
+    digest, but it's no longer the lede — it lives inside the grid
+    below at full width.
+
+    Layout: 2-col grid on desktop so the modeler view and the market
+    view read as a pair; stacked on mobile so each band stays scannable
+    on narrow viewports.
   #}
-  <section class="panel-shell rounded-lg border border-slate-200 bg-white p-5 mb-4"
-           data-testid="changes-panel">
-    <div class="flex items-baseline justify-between gap-3 flex-wrap">
-      <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">
-        What changed
-      </h2>
-      <p id="changes-as-of"
-         class="text-xs text-slate-400 font-mono"
-         data-testid="changes-as-of"></p>
-    </div>
-    <p class="mt-1 text-xs text-slate-400 leading-relaxed">
-      Day-over-day shifts — storm intensity changes, equity movers,
-      cat bond proxy prices, and prediction-market volume. Quiet days
-      collapse to a single line.
-    </p>
-    <div id="changes-readout"
-         class="mt-3 hidden"
-         data-testid="changes-readout"></div>
-    <div id="changes-empty" class="mt-3 text-slate-400">
-      <p class="text-sm">Loading today's changes…</p>
-    </div>
-  </section>
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-2 mb-4">
+
+    {#
+      Panel 7 — Modeled losses (insurance-side expert view).
+
+      Pulls /api/v1/cat-losses/recent which reads
+      data/cat_loss_estimates.yaml — hand-curated post-event insured-
+      loss estimates from the major catastrophe modeling firms
+      (Moody's RMS, Verisk, CoreLogic, Karen Clark & Co.). When an
+      active storm matches a curated event, the panel shows the
+      incoming-estimates view; off-season it shows the most-recent
+      prior event.
+
+      Editorial framing: modeler numbers are facts and not
+      copyrightable; refinement notes are short editorial paraphrase.
+      See docs/post_event_loss_estimates_memo.md.
+    #}
+    <section class="panel-shell rounded-lg border border-slate-200 bg-white p-5"
+             data-testid="cat-losses-panel">
+      <div class="flex items-baseline justify-between gap-3 flex-wrap">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">
+          Modeled losses
+        </h2>
+        <p id="cat-losses-framing"
+           class="text-xs text-slate-400"
+           data-testid="cat-losses-framing"></p>
+      </div>
+      <p class="mt-1 text-xs text-slate-400 max-w-3xl">
+        Post-event insured-loss estimates from the major catastrophe
+        modeling firms — Moody's RMS, Verisk, CoreLogic, Karen Clark &amp;
+        Co. When an active storm has incoming estimates, those land here
+        first; off-season, the most-recent prior event. Source numbers
+        link to the original release; refinement notes are RMN editorial.
+      </p>
+      <div id="cat-losses-readout"
+           class="mt-3 hidden"
+           data-testid="cat-losses-readout"></div>
+      <div id="cat-losses-empty" class="mt-3 text-slate-400">
+        <p class="text-sm">Loading modeled losses…</p>
+      </div>
+    </section>
+
+    {#
+      Panel 8 — Prediction-market heat-map (market-side expert view).
+
+      Full-width grid colored by day-over-day yes-price move across the
+      canonical hurricane questions trading on Kalshi and Polymarket.
+      Red = price rose (probability increased), blue = price fell.
+      Gray = missing cell. The is_quiet caption flips on when average
+      |delta| is below threshold so the cool palette reads honestly
+      rather than as a broken visualization.
+
+      Editorial data: data/prediction_market_questions.yaml is the
+      source of truth for which canonical questions appear and which
+      platform-specific tickers they map to. Adding a column = editing
+      the YAML, not the JS.
+    #}
+    <section class="panel-shell rounded-lg border border-slate-200 bg-white p-5"
+             data-testid="heat-map-panel">
+      <div class="flex items-baseline justify-between gap-3 flex-wrap">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">
+          Prediction-market heat-map
+        </h2>
+        <p id="heat-map-framing"
+           class="text-xs text-slate-400"
+           data-testid="heat-map-framing"></p>
+      </div>
+      <p class="mt-1 text-xs text-slate-400 max-w-3xl">
+        Day-over-day price moves across the hurricane outcome questions
+        trading on Kalshi and Polymarket. Red = yes-price rose (market
+        raised the probability), blue = yes-price fell. Color intensity
+        scales to the day's biggest mover. Gray cells mean either the
+        platform doesn't carry that market or there's no recent
+        snapshot. Hover any cell for full detail.
+      </p>
+      <div id="heat-map-readout"
+           class="mt-3 hidden overflow-x-auto"
+           data-testid="heat-map-readout"></div>
+      <p id="heat-map-caption"
+         class="hidden mt-3 text-xs text-slate-500"
+         data-testid="heat-map-caption"></p>
+      <div id="heat-map-empty" class="mt-3 text-slate-400">
+        <p class="text-sm">Loading heat-map…</p>
+      </div>
+    </section>
+
+  </div>
 
   <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
 
@@ -454,129 +527,46 @@
     </section>
 
     {#
-      Panel 7 — Modeled losses (Day 60+, Phase 2 build).
+      Panel 6 — What changed today (demoted into the grid June 16 2026).
 
-      The after-event complement to the before/during panels. Pulls
-      from /api/v1/cat-losses/recent which reads
-      data/cat_loss_estimates.yaml — a hand-curated set of post-event
-      insured-loss estimates from the four major catastrophe modeling
-      firms (Moody's RMS, Verisk, CoreLogic, Karen Clark & Co.). When
-      an active storm matches a curated event by name, the panel shows
-      the incoming-estimates view; off-season it shows the most-recent
-      prior event.
-
-      Editorial framing: numbers from modeler releases are facts and
-      not copyrightable; the surrounding refinement notes are short
-      editorial paraphrase. See docs/post_event_loss_estimates_memo.md.
-
-      Visualization is custom SVG (matching count-curve and signal-
-      tape patterns) — no chart library. Each modeler renders as a
-      horizontal range bar with a midpoint tick; consensus midpoint
-      is the hero number above the bars.
-    #}
-    <section class="panel-shell rounded-lg border border-slate-200 bg-white p-5 lg:col-span-3"
-             data-testid="cat-losses-panel">
-      <div class="flex items-baseline justify-between gap-3 flex-wrap">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Modeled losses
-        </h2>
-        <p id="cat-losses-framing"
-           class="text-xs text-slate-400"
-           data-testid="cat-losses-framing"></p>
-      </div>
-      <p class="mt-1 text-xs text-slate-400 max-w-3xl">
-        Post-event insured-loss estimates from the major catastrophe
-        modeling firms — Moody's RMS, Verisk, CoreLogic, Karen Clark &amp;
-        Co. When an active storm has incoming estimates, those land here
-        first; off-season, the most-recent prior event. Source numbers
-        link to the original release; refinement notes are RMN editorial.
-      </p>
-      <div id="cat-losses-readout"
-           class="mt-3 hidden"
-           data-testid="cat-losses-readout"></div>
-      <div id="cat-losses-empty" class="mt-3 text-slate-400">
-        <p class="text-sm">Loading modeled losses…</p>
-      </div>
-    </section>
-
-    {#
-      Panel 8 — Prediction-market heat-map.
-
-      Full-width grid colored by day-over-day yes-price move across the
-      canonical hurricane questions trading on Kalshi and Polymarket.
-      Red = price rose (probability increased), blue = price fell,
-      intensity = magnitude scaled to the day's biggest mover. Gray =
-      missing cell (either the platform doesn't carry that question or
-      no recent snapshot exists).
-
-      Off-season behavior: per the Panel 8 editorial decision, the grid
-      always renders. When average |delta| is below the threshold the
-      service flips ``is_quiet`` true and the JS swaps in the
-      "Markets are quiet" caption so the cool color palette reads
-      honestly rather than as a broken visualization.
-
-      Editorial data: data/prediction_market_questions.yaml is the
-      source of truth for which canonical questions appear and which
-      platform-specific tickers they map to. Adding a column = editing
-      the YAML, not the JS.
-    #}
-    <section class="panel-shell rounded-lg border border-slate-200 bg-white p-5 lg:col-span-3"
-             data-testid="heat-map-panel">
-      <div class="flex items-baseline justify-between gap-3 flex-wrap">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Prediction-market heat-map
-        </h2>
-        <p id="heat-map-framing"
-           class="text-xs text-slate-400"
-           data-testid="heat-map-framing"></p>
-      </div>
-      <p class="mt-1 text-xs text-slate-400 max-w-3xl">
-        Day-over-day price moves across the hurricane outcome questions
-        trading on Kalshi and Polymarket. Red = yes-price rose (market
-        raised the probability), blue = yes-price fell. Color intensity
-        scales to the day's biggest mover. Gray cells mean either the
-        platform doesn't carry that market or there's no recent
-        snapshot. Hover any cell for full detail.
-      </p>
-      <div id="heat-map-readout"
-           class="mt-3 hidden overflow-x-auto"
-           data-testid="heat-map-readout"></div>
-      <p id="heat-map-caption"
-         class="hidden mt-3 text-xs text-slate-500"
-         data-testid="heat-map-caption"></p>
-      <div id="heat-map-empty" class="mt-3 text-slate-400">
-        <p class="text-sm">Loading heat-map…</p>
-      </div>
-    </section>
-
-    {#
-      Panel 6 — What changed today.
-
-      Day 41: this section was MOVED to a full-width band at the top
-      of the page (above the multi-column grid). The block stays
-      below as a reminder of the editorial intent and the data flow,
-      but the rendered <section> lives near the page header. If you
-      ever need to revert (e.g., to A/B test position), copy the
-      section markup back from immediately after the page header
-      <section>.
+      This block previously lived in a full-width band above the grid
+      (Day 41 promote); the June 16 restack moved the Phase 2 hero
+      pair into that slot and demoted this digest here. Editorially
+      it's still daily-driver utility for returning readers — just
+      no longer the lede.
 
       Pure derived data, no new ingest. Service layer
       (services/daily_changes.todays_changes) aggregates day-over-day
-      deltas across StormObservation (intensity / classification),
-      TickerQuote (top equity movers + cat bond proxy). Panel renders
-      a small grouped readout — three storm lines max, three equity
-      movers max, one cat bond line. Nothing notable on a quiet day
-      collapses to a single "Quiet day" message rather than a long
-      list of unchanged items.
+      deltas across StormObservation, TickerQuote, and prediction
+      markets. Renders a small grouped readout — three storm lines
+      max, three equity movers max, one cat bond line, top prediction-
+      market movers. Nothing notable on a quiet day collapses to a
+      single "Quiet day" message.
 
-      Through Day 40 this section lived at the bottom of the
-      multi-column grid, in the right column at lg width — sitting
-      next to Panel 5 (Historical analogs) so the bottom row read
-      "what's similar in the past · what shifted today." Day 41
-      moved it to a full-width band at the top of the page; the
-      multi-column grid below now ends with Panel 5 alone in its
-      slot.
+      lg:col-span-3 keeps the full-width visual it had as a band.
     #}
+    <section class="panel-shell rounded-lg border border-slate-200 bg-white p-5 lg:col-span-3"
+             data-testid="changes-panel">
+      <div class="flex items-baseline justify-between gap-3 flex-wrap">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">
+          What changed
+        </h2>
+        <p id="changes-as-of"
+           class="text-xs text-slate-400 font-mono"
+           data-testid="changes-as-of"></p>
+      </div>
+      <p class="mt-1 text-xs text-slate-400 leading-relaxed">
+        Day-over-day shifts — storm intensity changes, equity movers,
+        cat bond proxy prices, and prediction-market volume. Quiet days
+        collapse to a single line.
+      </p>
+      <div id="changes-readout"
+           class="mt-3 hidden"
+           data-testid="changes-readout"></div>
+      <div id="changes-empty" class="mt-3 text-slate-400">
+        <p class="text-sm">Loading today's changes…</p>
+      </div>
+    </section>
 
   </div>
 {% endblock %}
