@@ -53,10 +53,11 @@ questions:
 def test_bundled_heat_map_loads_cleanly() -> None:
     doc = load_heat_map_questions()
     assert isinstance(doc, HeatMapQuestions)
-    # Three at launch (count-ge-5 both-platform, count-ge-7 Kalshi-only,
-    # first-hurricane-by-aug-1 Polymarket-only). Allow editorial growth
-    # without pinning the count.
-    assert 3 <= len(doc.questions) <= 30
+    # Twelve at launch (June 16 2026 v2 revision): 9 Kalshi
+    # count-threshold entries across the hurricane / major-hurricane /
+    # named-storm series, plus 3 Polymarket landfall + timing entries.
+    # Allow editorial growth without pinning the count.
+    assert 10 <= len(doc.questions) <= 30
 
 
 def test_bundled_heat_map_has_no_duplicate_ids() -> None:
@@ -259,19 +260,29 @@ def test_platforms_present_orders_kalshi_first() -> None:
 def test_questions_for_platform_filters_correctly() -> None:
     """A platform's questions slice is the union of canonical questions
     that list it in platforms — used by the service to issue per-
-    platform DB lookups."""
+    platform DB lookups.
+
+    Updated June 16 2026 to match the v2 YAML shape: Kalshi and
+    Polymarket now carry strictly disjoint question sets (Kalshi sells
+    count thresholds, Polymarket sells landfall/timing binaries). No
+    canonical question is dual-platform; the cross-reference test now
+    asserts that strict disjointness.
+    """
     doc = load_heat_map_questions()
     kalshi_qs = doc.questions_for_platform("kalshi")
     polymarket_qs = doc.questions_for_platform("polymarket")
-    # Kalshi carries count-ge-5 and count-ge-7 (per the seed). It does
-    # not carry first-hurricane-by-aug-1.
     kalshi_ids = {q.id for q in kalshi_qs}
+    polymarket_ids = {q.id for q in polymarket_qs}
+    # Kalshi-only entries (hurricane count series).
     assert "atlantic-count-ge-5" in kalshi_ids
     assert "atlantic-count-ge-7" in kalshi_ids
-    assert "first-hurricane-by-aug-1" not in kalshi_ids
-    # Polymarket carries count-ge-5 and first-hurricane-by-aug-1 but
-    # not count-ge-7.
-    polymarket_ids = {q.id for q in polymarket_qs}
-    assert "atlantic-count-ge-5" in polymarket_ids
-    assert "first-hurricane-by-aug-1" in polymarket_ids
+    assert "atlantic-count-ge-5" not in polymarket_ids
     assert "atlantic-count-ge-7" not in polymarket_ids
+    # Polymarket-only entries (landfall + timing).
+    assert "us-cat4-landfall-2026" in polymarket_ids
+    assert "us-cat4-landfall-2026" not in kalshi_ids
+    # The two platform sets are disjoint at launch — every question is
+    # single-platform. If the YAML ever introduces a dual-platform
+    # canonical question (genuine cross-platform pair), this assertion
+    # should be relaxed and the corresponding "in both" case added.
+    assert kalshi_ids.isdisjoint(polymarket_ids)

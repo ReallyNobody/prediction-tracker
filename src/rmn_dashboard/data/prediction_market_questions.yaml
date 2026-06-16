@@ -17,38 +17,137 @@
 #     the row. The information that "Kalshi carries this but Polymarket
 #     doesn't" is itself editorially useful.
 #
-# Session 4 work: editorial backfill expands this to 5-8 canonical
-# questions with verified tickers and slugs. The three entries below are
-# the launch seed, shaped to exercise the three structural cases:
-# Kalshi-only, both, Polymarket-only.
+# Editorial reality (June 16 2026 audit):
+#   The two major US prediction markets carry meaningfully different
+#   hurricane question sets. Kalshi sells a clean count-threshold
+#   ladder across three families (hurricane count, major-hurricane
+#   count, named-storm count). Polymarket sells binary landfall and
+#   timing questions (Cat 4 landfall in US before 2027, named storm
+#   before season, etc.). Genuine cross-platform matches are thin —
+#   most rows here are single-platform by editorial necessity. The
+#   empty cells are themselves the editorial story: "platforms price
+#   different framings of the same season."
 
-version: 1
-last_reviewed: 2026-06-15
+version: 2
+last_reviewed: 2026-06-16
 
 questions:
 
-  # Case: both platforms carry this question.
+  # ===========================================================
+  # Kalshi count series — Atlantic hurricane count thresholds
+  # (KXHURCTOT-26DEC01-T{N}). Settles on NHC's end-of-season
+  # count for storms reaching hurricane strength (Cat 1+).
+  # ===========================================================
+
   - id: atlantic-count-ge-5
-    short_label: "Count ≥5"
-    long_label: "Atlantic named storms ≥5 for the 2026 season"
+    short_label: "Hurricanes ≥5"
+    long_label: "Atlantic hurricanes ≥5 for the 2026 season"
     category: count
     platforms:
       kalshi: KXHURCTOT-26DEC01-T5
-      polymarket: will-there-be-5-or-more-named-storms-in-2026
 
-  # Case: Kalshi carries the count threshold, Polymarket doesn't.
+  - id: atlantic-count-ge-6
+    short_label: "Hurricanes ≥6"
+    long_label: "Atlantic hurricanes ≥6 for the 2026 season"
+    category: count
+    platforms:
+      kalshi: KXHURCTOT-26DEC01-T6
+
   - id: atlantic-count-ge-7
-    short_label: "Count ≥7"
-    long_label: "Atlantic named storms ≥7 for the 2026 season"
+    short_label: "Hurricanes ≥7"
+    long_label: "Atlantic hurricanes ≥7 for the 2026 season"
     category: count
     platforms:
       kalshi: KXHURCTOT-26DEC01-T7
 
-  # Case: Polymarket-only — "by date X" questions are a Polymarket
-  # native frame, Kalshi tends not to carry them.
-  - id: first-hurricane-by-aug-1
-    short_label: "1st by Aug 1"
-    long_label: "First Atlantic hurricane formed on or before August 1, 2026"
+  # ===========================================================
+  # Kalshi major-hurricane series (Cat 3+) — count thresholds
+  # via KXHURCTOTMAJ-26DEC01-T{N}. Higher-volume than the
+  # straight count series since intensity is the editorial
+  # story most insurance readers care about.
+  # ===========================================================
+
+  - id: atlantic-major-ge-2
+    short_label: "Majors ≥2"
+    long_label: "Atlantic major hurricanes (Cat 3+) ≥2 for 2026"
+    category: count
+    platforms:
+      kalshi: KXHURCTOTMAJ-26DEC01-T2
+
+  - id: atlantic-major-ge-3
+    short_label: "Majors ≥3"
+    long_label: "Atlantic major hurricanes (Cat 3+) ≥3 for 2026"
+    category: count
+    platforms:
+      kalshi: KXHURCTOTMAJ-26DEC01-T3
+
+  - id: atlantic-major-ge-4
+    short_label: "Majors ≥4"
+    long_label: "Atlantic major hurricanes (Cat 3+) ≥4 for 2026"
+    category: count
+    platforms:
+      kalshi: KXHURCTOTMAJ-26DEC01-T4
+
+  # ===========================================================
+  # Kalshi tropical-storm series (KXTROPSTORM-26DEC01-T{N}) —
+  # all named Atlantic storms, including tropical storms that
+  # never reach hurricane strength. Distinct from KXHURCTOT,
+  # which counts only hurricanes (Cat 1+). Climatologically
+  # the named-storm count runs 2-3× the hurricane count.
+  # ===========================================================
+
+  - id: atlantic-named-storms-ge-14
+    short_label: "Named ≥14"
+    long_label: "Atlantic named storms ≥14 for the 2026 season"
+    category: count
+    platforms:
+      kalshi: KXTROPSTORM-26DEC01-T14
+
+  - id: atlantic-named-storms-ge-16
+    short_label: "Named ≥16"
+    long_label: "Atlantic named storms ≥16 for the 2026 season"
+    category: count
+    platforms:
+      kalshi: KXTROPSTORM-26DEC01-T16
+
+  - id: atlantic-named-storms-ge-18
+    short_label: "Named ≥18"
+    long_label: "Atlantic named storms ≥18 for the 2026 season"
+    category: count
+    platforms:
+      kalshi: KXTROPSTORM-26DEC01-T18
+
+  # ===========================================================
+  # Polymarket landfall questions — binary outcome on whether
+  # a Category 4 or 5 hurricane makes US landfall before 2027.
+  # No Kalshi equivalent: Kalshi's intensity series counts how
+  # many Cat 3+ hurricanes form basin-wide, not whether they
+  # actually hit the US.
+  # ===========================================================
+
+  - id: us-cat4-landfall-2026
+    short_label: "Cat 4 landfall"
+    long_label: "Any Category 4 hurricane makes US landfall before 2027"
+    category: landfall
+    platforms:
+      polymarket: will-any-category-4-hurricane-make-landfall-in-the-us-in-before-2027
+
+  - id: us-cat5-landfall-2026
+    short_label: "Cat 5 landfall"
+    long_label: "Any Category 5 hurricane makes US landfall before 2027"
+    category: landfall
+    platforms:
+      polymarket: will-any-category-5-hurricane-make-landfall-in-the-us-in-before-2027
+
+  # ===========================================================
+  # Polymarket timing question — early-season formation.
+  # Polymarket frames hurricane-season timing as binary
+  # "by date X" markets; Kalshi doesn't carry this framing.
+  # ===========================================================
+
+  - id: pre-season-named-storm
+    short_label: "Storm pre-season"
+    long_label: "Named storm forms before official hurricane-season start"
     category: timing
     platforms:
-      polymarket: will-an-atlantic-hurricane-form-by-august-1
+      polymarket: named-storm-forms-before-hurricane-season-197
