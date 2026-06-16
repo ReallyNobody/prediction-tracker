@@ -2,44 +2,58 @@
 
 Polymarket's Gamma API (https://gamma-api.polymarket.com) is public and
 unauthenticated, which keeps the auth surface much simpler than Kalshi's
-RSA-PSS-signed requests. Day 36's probe script
-(``scripts/probe_polymarket.py``) confirmed the response shape: each
-market is a flat object with `id`, `slug`, `question`, JSON-encoded
-`outcomes` and `outcomePrices` strings, and parsed numeric fields like
-`volumeNum`, `volume24hr`, `liquidityNum`, `lastTradePrice`. Open
-interest sits one level deeper under `events[0].openInterest`.
+RSA-PSS-signed requests.
 
 This module exposes a sync ``PolymarketClient`` (thin wrapper around
 ``httpx``) and a ``fetch_hurricane_markets()`` entry point that pulls
-all open markets, filters to hurricane-related titles via the same
-keyword regex used in ``scripts/probe_polymarket.py``, and returns
-normalized ``PolymarketMarket`` records.
+hurricane-tagged events from ``/events?tag_slug=hurricane`` and
+flattens their nested ``markets`` array into normalized
+``PolymarketMarket`` records.
+
+Endpoint history (audit-driven, June 2026):
+
+  Day 37 (May 2026) shipped against ``/markets?closed=false`` with a
+  client-side keyword regex over the title. That approach silently
+  stopped finding hurricane markets in mid-May once Polymarket grew
+  past our pagination ceiling (25 pages × 200 = 5000 markets) and/or
+  restructured how the flat /markets catalog surfaces tagged questions.
+  The June 16 audit caught a 33-day data gap — Polymarket snapshots
+  were last updated 2026-05-14.
+
+  This rewrite hits ``/events?tag_slug=hurricane`` instead. Polymarket
+  publishes a curated hurricane tag (id 102023, slug "hurricane")
+  which is the same source they use for polymarket.com/markets/hurricane.
+  Targeted query, no pagination ceiling, no client-side regex needed
+  — their own editorial categorization is the source of truth.
+
+Response-shape note:
+
+  ``/events?tag_slug=hurricane`` returns event objects, each with a
+  nested ``markets`` array. ``_flatten_event_markets`` extracts each
+  child market into the flat shape ``_normalize_market`` already
+  consumes, re-attaching the parent event as ``events: [parent]`` so
+  ``openInterest`` and ``event_ticker`` keep working unchanged.
 
 Architectural choices, deliberately mirroring ``scrapers/kalshi.py``:
 
-  * Sync + httpx (not async) — matches the rest of the codebase. Thread-pool
-    parallelism if/when we need it.
-  * Injectable ``httpx.Client`` so tests use ``httpx.MockTransport`` and
-    never touch the network.
-  * Frozen dataclass record so downstream code (the ingest task) sees a
-    stable, typed shape regardless of upstream API changes.
-  * Per-page pagination + courtesy sleep + exponential backoff on 429.
+  * Sync + httpx (not async) — matches the rest of the codebase.
+  * Injectable ``httpx.Client`` so tests use ``httpx.MockTransport``
+    and never touch the network.
+  * Frozen dataclass record so downstream code (the ingest task) sees
+    a stable, typed shape regardless of upstream API changes.
+  * Exponential backoff on 429.
 
 What this module does NOT do:
 
   * Authentication. Polymarket Gamma is public; no key, no signing.
   * Trade execution. We're a read-only consumer of the public market
     catalog, not a trading client.
-  * Event-level scraping. We pull markets directly. The `events[0]`
-    nested object on each market gives us ``openInterest`` for free,
-    but we don't separately enumerate ``/events``.
 """
 
 from __future__ import annotations
 
 import json
 import logging
-import re
 import time
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -50,21 +64,19 @@ import httpx
 logger = logging.getLogger(__name__)
 
 
-# Hurricane-adjacent keywords. Same regex as scripts/probe_polymarket.py
-# and scripts/probe_kalshi.py — deliberately omits a bare "storm" since
-# it pulls in sports teams (Melbourne Storm, Orlando Storm) and snowstorm
-# / thunderstorm markets we don't want.
-_HURRICANE_KEYWORDS = re.compile(
-    r"\b(hurricane|tropical|cyclone|landfall|atlantic\s+(?:basin|season|hurricane))\b",
-    re.IGNORECASE,
-)
+# Polymarket's curated hurricane tag — the same slug they use for the
+# polymarket.com/markets/hurricane category page. Querying
+# /events?tag_slug=hurricane returns exactly the editorially-tagged
+# subset, no client-side filtering needed.
+_HURRICANE_TAG_SLUG = "hurricane"
 
-# Pagination + rate-limit tunables. The Gamma API has no documented rate
-# limit, but we're a courtesy guest on a public endpoint. 0.4s between
-# pages ≈ 2.5 req/s — gentle.
-PER_PAGE = 200
-PER_PAGE_SLEEP = 0.4
-MAX_PAGES = 25  # 25 * 200 = 5,000 markets ceiling — well above hurricane-market count.
+# How many hurricane-tagged events to pull per request. 100 is
+# generously above the live hurricane catalog (~5-10 events in
+# steady state) and well inside any per-request limit. The endpoint
+# is targeted enough that pagination is effectively unnecessary; we
+# request once and trust the response to contain everything.
+EVENT_FETCH_LIMIT = 100
+
 MAX_429_RETRIES = 4
 HTTP_TIMEOUT = 30.0
 
@@ -275,55 +287,81 @@ def _coerce_float(value: Any) -> float | None:
         return None
 
 
-# ----- Pagination + filter -----------------------------------------------
+# ----- Event fetch + flatten --------------------------------------------
 
 
-def _fetch_open_markets_page(client: PolymarketClient, offset: int) -> list[dict[str, Any]]:
-    """One page of /markets?closed=false&archived=false&limit=PER_PAGE."""
-    payload = client.get(
-        "/markets",
-        params={
-            "limit": PER_PAGE,
-            "offset": offset,
-            "closed": "false",
-            "archived": "false",
-        },
-    )
+def _fetch_hurricane_events(client: PolymarketClient) -> list[dict[str, Any]]:
+    """Fetch all open hurricane-tagged events from Polymarket.
+
+    Hits ``/events?tag_slug=hurricane&closed=false&archived=false``.
+    Returns the parsed list (or empty on network error / unexpected
+    response shape) — never raises. The endpoint is targeted enough
+    that no pagination is needed at hurricane volumes.
+    """
+    try:
+        payload = client.get(
+            "/events",
+            params={
+                "tag_slug": _HURRICANE_TAG_SLUG,
+                "closed": "false",
+                "archived": "false",
+                "limit": EVENT_FETCH_LIMIT,
+            },
+        )
+    except httpx.HTTPError as exc:
+        logger.warning("Polymarket /events?tag_slug=hurricane failed: %s", exc)
+        return []
     if isinstance(payload, list):
         return payload
-    if isinstance(payload, dict) and isinstance(payload.get("markets"), list):
-        return payload["markets"]
-    logger.warning("Unexpected /markets payload shape: %s", type(payload).__name__)
+    if isinstance(payload, dict) and isinstance(payload.get("events"), list):
+        return payload["events"]
+    logger.warning("Unexpected /events payload shape: %s", type(payload).__name__)
     return []
 
 
-def _paginate_open_markets(client: PolymarketClient) -> list[dict[str, Any]]:
-    """Pull active markets across pages, returning whatever we successfully got."""
-    markets: list[dict[str, Any]] = []
-    for page in range(MAX_PAGES):
-        try:
-            batch = _fetch_open_markets_page(client, page * PER_PAGE)
-        except httpx.HTTPError as exc:
-            logger.warning(
-                "Polymarket /markets page %d failed; stopping with %d collected: %s",
-                page + 1,
-                len(markets),
-                exc,
-            )
-            break
-        if not batch:
-            break
-        markets.extend(batch)
-        if len(batch) < PER_PAGE:
-            break
-        time.sleep(PER_PAGE_SLEEP)
-    return markets
+def _flatten_event_markets(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Pull each event's ``markets`` array out into a flat list.
 
+    The inner market dicts already match the shape ``_normalize_market``
+    consumes (slug, question, outcomes, outcomePrices, volumeNum, etc.).
+    We re-attach the parent event as ``events: [parent]`` on each child
+    so ``_open_interest_from_events`` and ``_event_ticker_from_events``
+    keep working without modification — they read the parent the same
+    way the old /markets endpoint reported it.
 
-def _matches_hurricane(raw: dict[str, Any]) -> bool:
-    """Title-keyword filter. Same regex as the probe."""
-    title = raw.get("question") or raw.get("title") or ""
-    return bool(_HURRICANE_KEYWORDS.search(title))
+    Filters out markets that aren't currently tradeable
+    (``active=false`` or ``closed=true``). Polymarket sometimes leaves
+    paused / draft markets nested under an active event; we don't want
+    them in the heat-map.
+    """
+    out: list[dict[str, Any]] = []
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        nested = event.get("markets")
+        if not isinstance(nested, list):
+            continue
+        # Build a slim parent record that preserves the fields our
+        # ``events[0]`` readers care about — slug, ticker, openInterest.
+        # Copying the whole event would balloon the in-memory size and
+        # carry irrelevant fields downstream.
+        parent = {
+            "slug": event.get("slug") or event.get("ticker"),
+            "ticker": event.get("ticker") or event.get("slug"),
+            "openInterest": event.get("openInterest"),
+        }
+        for market in nested:
+            if not isinstance(market, dict):
+                continue
+            if market.get("closed") is True:
+                continue
+            if market.get("active") is False:
+                continue
+            # Inject parent so the normalizer's ``events[0]`` reads work.
+            market_with_parent = dict(market)
+            market_with_parent["events"] = [parent]
+            out.append(market_with_parent)
+    return out
 
 
 # ----- Public entry point ------------------------------------------------
@@ -348,15 +386,15 @@ def fetch_hurricane_markets(*, client: PolymarketClient | None = None) -> list[P
         client = client_from_settings()
 
     try:
-        raw_markets = _paginate_open_markets(client)
+        events = _fetch_hurricane_events(client)
     finally:
         if owned_client:
             client.close()
 
-    matches = [m for m in raw_markets if _matches_hurricane(m)]
+    matches = _flatten_event_markets(events)
     logger.info(
-        "Polymarket: %d open markets, %d hurricane-keyword hits.",
-        len(raw_markets),
+        "Polymarket: %d hurricane-tagged events, %d tradeable markets.",
+        len(events),
         len(matches),
     )
 
@@ -374,15 +412,16 @@ def fetch_hurricane_markets(*, client: PolymarketClient | None = None) -> list[P
     return normalized
 
 
-# Keep a public alias matching the Kalshi module's exported set so the
-# task layer can import a parallel name. Currently empty since
-# Polymarket doesn't have the "series ticker" concept Kalshi does — the
-# whole catalog is filtered by keyword instead.
-HURRICANE_KEYWORDS_PATTERN = _HURRICANE_KEYWORDS.pattern
+# Public alias matching the Kalshi module's exported set so the task
+# layer can import a parallel name. Polymarket's editorial categorization
+# (the "hurricane" tag) is the equivalent of Kalshi's series ticker —
+# it identifies the subset of the catalog we care about, with no
+# client-side keyword work needed.
+HURRICANE_TAG_SLUG = _HURRICANE_TAG_SLUG
 
 
 __all__: Iterable[str] = (
-    "HURRICANE_KEYWORDS_PATTERN",
+    "HURRICANE_TAG_SLUG",
     "PolymarketClient",
     "PolymarketMarket",
     "client_from_settings",

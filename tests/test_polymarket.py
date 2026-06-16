@@ -1,10 +1,14 @@
 """Unit tests for ``rmn_dashboard.scrapers.polymarket``.
 
-Day 37 — Polymarket Gamma API scraper. Tests use ``httpx.MockTransport``
-so the network is never touched. Sample fixture markets are derived from
-the real shape Day 36's probe script returned (see
-``scripts/probe_polymarket.py`` and the chat-pasted probe output for
-ground truth on field names and value formats).
+June 2026 — rewritten when the scraper switched from
+``/markets?closed=false`` (with a client-side keyword regex) to
+``/events?tag_slug=hurricane`` (Polymarket's curated hurricane tag).
+The inner market dict shape is identical between the two endpoints,
+so the parse + normalize assertions carry over; what changes is the
+response envelope: tests now mock event objects with nested
+``markets`` arrays, mirroring the live Gamma API shape.
+
+Tests use ``httpx.MockTransport`` so the network is never touched.
 """
 
 from __future__ import annotations
@@ -20,11 +24,11 @@ from rmn_dashboard.scrapers.polymarket import (
     fetch_hurricane_markets,
 )
 
-# A trimmed-down version of the JSON dump Day 36's probe surfaced for
-# the "Will a hurricane make landfall in the US by May 31?" market.
-# Includes every field the scraper actually consumes plus a couple of
-# dummies to mimic the long surface area of the real response.
-_HURRICANE_MARKET = {
+# Inner market dict — same shape Polymarket has always reported,
+# both under the old /markets endpoint and under each event's nested
+# ``markets`` array on the new /events endpoint. Derived from real
+# Day 36 probe data plus what the June 2026 live API confirmed.
+_HURRICANE_MARKET: dict[str, Any] = {
     "id": "820350",
     "question": "Will a hurricane make landfall in the US by May 31?",
     "slug": "will-a-hurricane-make-landfall-in-the-us-by-may-31",
@@ -38,27 +42,32 @@ _HURRICANE_MARKET = {
     "endDate": "2026-05-31T00:00:00Z",
     "active": True,
     "closed": False,
-    "events": [
-        {
-            "slug": "will-a-hurricane-make-landfall-in-the-us-by-may-31",
-            "openInterest": 2770.31,
-        }
-    ],
 }
 
-_NON_HURRICANE_MARKET = {
-    "id": "999999",
-    "question": "Will the Lakers win the championship?",
-    "slug": "lakers-championship",
-    "outcomes": '["Yes", "No"]',
-    "outcomePrices": '["0.30", "0.70"]',
-    "volumeNum": 5000.0,
-    "volume24hr": 200.0,
-    "endDate": "2026-06-30T00:00:00Z",
-    "active": True,
-    "closed": False,
-    "events": [],
-}
+
+def _wrap_event(
+    *markets: dict[str, Any],
+    slug: str = "will-a-hurricane-make-landfall-in-the-us-by-may-31",
+    ticker: str | None = None,
+    open_interest: float | None = 2770.31,
+) -> dict[str, Any]:
+    """Build one event envelope wrapping the given child markets.
+
+    Mirrors the shape returned by /events?tag_slug=hurricane in the
+    live API: parent-level slug + ticker + openInterest, with a
+    nested ``markets`` array.
+    """
+    return {
+        "id": "131388",
+        "ticker": ticker or slug,
+        "slug": slug,
+        "title": "Will a hurricane make landfall in the US by May 31?",
+        "active": True,
+        "closed": False,
+        "archived": False,
+        "openInterest": open_interest,
+        "markets": list(markets),
+    }
 
 
 def _mock_client(handler: Any) -> PolymarketClient:
@@ -67,33 +76,41 @@ def _mock_client(handler: Any) -> PolymarketClient:
     return PolymarketClient(httpx.Client(transport=transport, base_url="https://test"))
 
 
-def test_fetch_hurricane_markets_filters_to_hurricane_keywords() -> None:
-    """The keyword regex matches hurricane / tropical / cyclone / landfall.
-    Non-hurricane markets in the same response should be dropped."""
+# ----- Endpoint contract --------------------------------------------------
+
+
+def test_fetch_hurricane_markets_uses_events_tag_slug_endpoint() -> None:
+    """The scraper must hit /events?tag_slug=hurricane — querying the
+    untagged /markets catalog was the silent-failure mode that broke
+    Polymarket ingest in May 2026."""
+    captured: list[httpx.Request] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
-        # First page returns mixed markets; second page returns empty
-        # so pagination terminates without sleeping in test loop.
-        if "offset=200" in str(request.url):
-            return httpx.Response(200, json=[])
-        return httpx.Response(200, json=[_HURRICANE_MARKET, _NON_HURRICANE_MARKET])
+        captured.append(request)
+        return httpx.Response(200, json=[])
 
     client = _mock_client(handler)
-    markets = fetch_hurricane_markets(client=client)
+    fetch_hurricane_markets(client=client)
 
-    assert len(markets) == 1
-    assert markets[0].title == "Will a hurricane make landfall in the US by May 31?"
+    assert captured, "scraper made no requests"
+    request = captured[0]
+    assert request.url.path == "/events"
+    params = dict(request.url.params)
+    assert params.get("tag_slug") == "hurricane"
+    assert params.get("closed") == "false"
+    assert params.get("archived") == "false"
+
+
+# ----- Normalization ------------------------------------------------------
 
 
 def test_fetch_hurricane_markets_normalizes_fields_correctly() -> None:
     """Spot-check the parse: prices come from JSON-encoded string list,
-    volume from ``volumeNum``, OI from ``events[0].openInterest``, URL
-    from ``polymarket.com/event/{slug}``."""
+    volume from ``volumeNum``, OI from the parent event injected into
+    ``events[0].openInterest``, URL from ``polymarket.com/event/{slug}``."""
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        if "offset=200" in str(request.url):
-            return httpx.Response(200, json=[])
-        return httpx.Response(200, json=[_HURRICANE_MARKET])
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=[_wrap_event(_HURRICANE_MARKET)])
 
     client = _mock_client(handler)
     markets = fetch_hurricane_markets(client=client)
@@ -115,16 +132,14 @@ def test_fetch_hurricane_markets_normalizes_fields_correctly() -> None:
 
 def test_fetch_hurricane_markets_handles_unparseable_outcome_prices() -> None:
     """A market with malformed ``outcomePrices`` should still appear in
-    the result (the keyword filter still matches), but with None prices.
+    the result (the event-tag filter passed), but with None prices.
     The ingest task can decide whether to skip None-priced rows; the
     scraper's contract is "best effort, log warnings, don't crash."
     """
     bad = {**_HURRICANE_MARKET, "outcomePrices": "not-json"}
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        if "offset=200" in str(request.url):
-            return httpx.Response(200, json=[])
-        return httpx.Response(200, json=[bad])
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=[_wrap_event(bad)])
 
     client = _mock_client(handler)
     markets = fetch_hurricane_markets(client=client)
@@ -134,14 +149,15 @@ def test_fetch_hurricane_markets_handles_unparseable_outcome_prices() -> None:
     assert markets[0].no_price is None
 
 
-def test_fetch_hurricane_markets_returns_empty_when_no_keyword_hits() -> None:
-    """Off-season the basin can be empty. fetch_hurricane_markets returns
+# ----- Empty / shape handling --------------------------------------------
+
+
+def test_fetch_hurricane_markets_returns_empty_when_no_events() -> None:
+    """Off-season the tag can be empty. fetch_hurricane_markets returns
     [] rather than raising — the ingest task logs and skips the commit."""
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        if "offset=200" in str(request.url):
-            return httpx.Response(200, json=[])
-        return httpx.Response(200, json=[_NON_HURRICANE_MARKET])
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=[])
 
     client = _mock_client(handler)
     markets = fetch_hurricane_markets(client=client)
@@ -149,20 +165,88 @@ def test_fetch_hurricane_markets_returns_empty_when_no_keyword_hits() -> None:
     assert markets == []
 
 
-def test_fetch_hurricane_markets_handles_payload_with_markets_envelope() -> None:
-    """Polymarket's /markets sometimes returns a bare list, sometimes an
-    object with a `markets` key. The scraper handles both shapes."""
+def test_fetch_hurricane_markets_handles_events_envelope_payload() -> None:
+    """Polymarket's /events endpoint usually returns a bare list, but
+    has historically returned an ``{events: [...]}`` envelope in some
+    paths. Both shapes parse."""
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        if "offset=200" in str(request.url):
-            return httpx.Response(200, json={"markets": []})
-        return httpx.Response(200, json={"markets": [_HURRICANE_MARKET]})
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"events": [_wrap_event(_HURRICANE_MARKET)]})
 
     client = _mock_client(handler)
     markets = fetch_hurricane_markets(client=client)
 
     assert len(markets) == 1
-    assert markets[0].ticker == "will-a-hurricane-make-landfall-in-the-us-by-may-31"
+
+
+def test_fetch_hurricane_markets_handles_event_with_no_markets_array() -> None:
+    """An event with no ``markets`` field (or an empty array) yields
+    no output — skip the event silently."""
+    empty_event = {
+        "id": "131388",
+        "slug": "empty-event",
+        "title": "Empty Event",
+        "markets": [],
+    }
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=[empty_event])
+
+    client = _mock_client(handler)
+    markets = fetch_hurricane_markets(client=client)
+
+    assert markets == []
+
+
+# ----- Flatten + per-market filtering ------------------------------------
+
+
+def test_fetch_hurricane_markets_flattens_multiple_markets_per_event() -> None:
+    """An event with N child markets emits N normalized records — each
+    inheriting the parent event's openInterest."""
+    market_a = {**_HURRICANE_MARKET, "slug": "child-a", "question": "Child A?"}
+    market_b = {**_HURRICANE_MARKET, "slug": "child-b", "question": "Child B?"}
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json=[_wrap_event(market_a, market_b, open_interest=500.0)],
+        )
+
+    client = _mock_client(handler)
+    markets = fetch_hurricane_markets(client=client)
+
+    tickers = {m.ticker for m in markets}
+    assert tickers == {"child-a", "child-b"}
+    # Both inherit the parent event's openInterest.
+    assert all(m.open_interest == pytest.approx(500.0) for m in markets)
+
+
+def test_fetch_hurricane_markets_skips_closed_markets_in_event() -> None:
+    """A child market with ``closed=true`` is filtered out, even when
+    its parent event is still active."""
+    closed = {**_HURRICANE_MARKET, "slug": "closed-child", "closed": True}
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=[_wrap_event(closed)])
+
+    client = _mock_client(handler)
+    markets = fetch_hurricane_markets(client=client)
+
+    assert markets == []
+
+
+def test_fetch_hurricane_markets_skips_inactive_markets_in_event() -> None:
+    """A child market with ``active=false`` is filtered out."""
+    inactive = {**_HURRICANE_MARKET, "slug": "inactive-child", "active": False}
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=[_wrap_event(inactive)])
+
+    client = _mock_client(handler)
+    markets = fetch_hurricane_markets(client=client)
+
+    assert markets == []
 
 
 def test_fetch_hurricane_markets_skips_markets_without_slug() -> None:
@@ -170,15 +254,16 @@ def test_fetch_hurricane_markets_skips_markets_without_slug() -> None:
     half-broken row."""
     no_slug = {k: v for k, v in _HURRICANE_MARKET.items() if k != "slug"}
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        if "offset=200" in str(request.url):
-            return httpx.Response(200, json=[])
-        return httpx.Response(200, json=[no_slug])
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=[_wrap_event(no_slug)])
 
     client = _mock_client(handler)
     markets = fetch_hurricane_markets(client=client)
 
     assert markets == []
+
+
+# ----- Outcome-prices parser ---------------------------------------------
 
 
 def test_outcome_prices_parser_handles_three_outcome_markets() -> None:
@@ -192,10 +277,8 @@ def test_outcome_prices_parser_handles_three_outcome_markets() -> None:
         "outcomePrices": '["0.4", "0.5", "0.1"]',
     }
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        if "offset=200" in str(request.url):
-            return httpx.Response(200, json=[])
-        return httpx.Response(200, json=[multi])
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=[_wrap_event(multi)])
 
     client = _mock_client(handler)
     markets = fetch_hurricane_markets(client=client)
@@ -204,27 +287,6 @@ def test_outcome_prices_parser_handles_three_outcome_markets() -> None:
     # First two parsed as Yes/No; third element ignored by design.
     assert markets[0].yes_price == pytest.approx(0.4)
     assert markets[0].no_price == pytest.approx(0.5)
-
-
-def test_fetch_hurricane_markets_query_params_include_filters() -> None:
-    """Defensive: confirm the scraper sends closed=false and archived=false
-    so we don't accidentally pull resolved markets into the panel."""
-    captured: list[httpx.Request] = []
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured.append(request)
-        if "offset=200" in str(request.url):
-            return httpx.Response(200, json=[])
-        return httpx.Response(200, json=[])
-
-    client = _mock_client(handler)
-    fetch_hurricane_markets(client=client)
-
-    assert captured, "scraper made no requests"
-    first = captured[0]
-    qs = dict(first.url.params)
-    assert qs.get("closed") == "false"
-    assert qs.get("archived") == "false"
 
 
 def test_outcome_prices_round_trip_with_smart_quotes_does_not_crash() -> None:
@@ -236,10 +298,8 @@ def test_outcome_prices_round_trip_with_smart_quotes_does_not_crash() -> None:
         "outcomePrices": "[“0.4”, “0.6”]",
     }
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        if "offset=200" in str(request.url):
-            return httpx.Response(200, json=[])
-        return httpx.Response(200, json=[weird])
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=[_wrap_event(weird)])
 
     client = _mock_client(handler)
     markets = fetch_hurricane_markets(client=client)
@@ -284,10 +344,8 @@ def test_outcomes_field_unused_but_harmless() -> None:
     # Sanity: still has outcomePrices.
     assert "outcomePrices" in no_outcomes
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        if "offset=200" in str(request.url):
-            return httpx.Response(200, json=[])
-        return httpx.Response(200, json=[no_outcomes])
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=[_wrap_event(no_outcomes)])
 
     client = _mock_client(handler)
     markets = fetch_hurricane_markets(client=client)
@@ -296,7 +354,6 @@ def test_outcomes_field_unused_but_harmless() -> None:
     assert markets[0].yes_price == pytest.approx(0.0195)
 
 
-# Sanity check: the fixture's outcomes JSON parses cleanly too.
 def test_fixture_outcomes_field_is_valid_json() -> None:
     """Guard against accidentally writing a malformed test fixture."""
     parsed = json.loads(_HURRICANE_MARKET["outcomes"])
