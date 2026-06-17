@@ -33,9 +33,10 @@ from __future__ import annotations
 
 import io
 import logging
+import re
 import zipfile
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -246,14 +247,24 @@ def _split_parts(points: list[tuple[float, float]], parts: list[int]) -> list[li
 
 
 def _parse_advdate(raw: str) -> datetime:
-    """NHC's ADVDATE is typically one of these formats:
+    """NHC's ADVDATE comes in several formats depending on the storm's
+    location and the issuing office's convention:
 
-        '170909 1500'         # yyMMdd HHMM (UTC, no seconds)
-        '1500 UTC SAT SEP 09 2017'   # verbose form
-        '2017-09-09T15:00:00Z'       # ISO form (newer shapefiles)
+        '170909 1500'                    # yyMMdd HHMM (UTC, no seconds)
+        '1500 UTC SAT SEP 09 2017'       # verbose UTC form
+        '2017-09-09T15:00:00Z'           # ISO form (newer shapefiles)
+        '1200 AM CST Thu Jun 11 2026'    # 12-hour local-time form
 
-    Try the cheap ones first; fall back to ISO.
+    The last variant is what NHC uses for storms over US land or coastal
+    water — Miami's office publishes ADVDATE in the storm's local time
+    zone (CST/CDT/EST/EDT/etc.) rather than UTC for editorial readability.
+    Caught when PTC One / TS Arthur (al012026) made Texas landfall in
+    June 2026.
+
+    Try the cheap UTC forms first; fall back to the local-time regex.
     """
+    raw = raw.strip()
+
     candidates = (
         "%y%m%d %H%M",
         "%H%M UTC %a %b %d %Y",
@@ -262,14 +273,70 @@ def _parse_advdate(raw: str) -> datetime:
     )
     for fmt in candidates:
         try:
-            dt = datetime.strptime(raw.strip(), fmt)
+            dt = datetime.strptime(raw, fmt)
         except ValueError:
             continue
-        # Force UTC — NHC never publishes local time.
+        # Naive datetimes assumed UTC since the formats above are explicit.
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=UTC)
         return dt
+
+    # Local-time format: '1200 AM CST Thu Jun 11 2026'
+    # Parse the time + date parts and apply the named TZ's UTC offset.
+    local_match = _LOCAL_ADVDATE_PATTERN.match(raw)
+    if local_match is not None:
+        time_str, ampm, tz_abbrev, _weekday, month, day, year = local_match.groups()
+        offset_hours = _US_TZ_OFFSETS_HOURS.get(tz_abbrev.upper())
+        if offset_hours is not None:
+            try:
+                # Pad the time string so '1200' and '100' both parse as HHMM.
+                time_str = time_str.zfill(4)
+                local_naive = datetime.strptime(
+                    f"{time_str} {ampm} {month} {day} {year}",
+                    "%I%M %p %b %d %Y",
+                )
+            except ValueError:
+                pass
+            else:
+                # Treat the parsed naive datetime as local time in the given
+                # TZ, then convert to UTC by subtracting the offset.
+                return (local_naive - timedelta(hours=offset_hours)).replace(tzinfo=UTC)
+
     raise ValueError(f"Unparseable ADVDATE: {raw!r}")
+
+
+# US/Atlantic/Pacific timezone abbreviations NHC uses in ADVDATE local-time
+# strings, mapped to UTC offset in hours. We don't import a TZ database
+# because (a) strptime's %Z is locale-dependent and unreliable, and (b)
+# NHC's set is small and stable. Both standard and daylight variants are
+# included; the format string itself disambiguates which is in effect for
+# any given advisory (CST vs CDT).
+_US_TZ_OFFSETS_HOURS: dict[str, int] = {
+    "AST": -4,
+    "ADT": -3,
+    "EST": -5,
+    "EDT": -4,
+    "CST": -6,
+    "CDT": -5,
+    "MST": -7,
+    "MDT": -6,
+    "PST": -8,
+    "PDT": -7,
+    "AKST": -9,
+    "AKDT": -8,
+    "HST": -10,
+    "UTC": 0,
+    "GMT": 0,
+}
+
+# Regex for NHC's local-time ADVDATE format. Example:
+#   '1200 AM CST Thu Jun 11 2026'
+# Captures: time (3-4 digits), AM/PM, timezone abbrev, weekday, month,
+# day, year.
+_LOCAL_ADVDATE_PATTERN = re.compile(
+    r"^(\d{3,4})\s+(AM|PM)\s+(\w+)\s+(\w+)\s+(\w+)\s+(\d+)\s+(\d{4})$",
+    re.IGNORECASE,
+)
 
 
 # ----- parse_forecast_track_zip -------------------------------------------
