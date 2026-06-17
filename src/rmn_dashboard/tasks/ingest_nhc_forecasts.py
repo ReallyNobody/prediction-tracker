@@ -85,17 +85,32 @@ def _latest_observation_for(db: Session, storm_id: int) -> StormObservation | No
 def _extract_zip_url(advisory_urls: dict[str, Any] | None, key: str) -> str | None:
     """Pull a ZIP URL out of a storm's captured ``advisory_urls`` dict.
 
-    NHC's per-product sub-objects carry different shapes (``zipFile``,
-    ``url``, ``kmzFile``…). For the products we care about here,
-    ``zipFile`` is the shapefile archive we want.
+    NHC's per-product sub-objects carry different shapes. Most products
+    expose ``zipFile`` (forecastTrack, trackCone, forecastWindRadiiGIS,
+    bestTrackGIS, etc.), but ``windSpeedProbabilitiesGIS`` instead
+    exposes two resolution variants — ``zipFile5km`` (5 km grid) and
+    ``zipFile0p5deg`` (0.5° grid) — with no plain ``zipFile``.
+
+    We prefer 5 km when available (higher resolution = sharper Panel 4
+    landfall contours), then fall back to the half-degree variant. The
+    ``zipFile`` field is tried first so other products still resolve.
+
+    History: through 2026-06-16 this only looked at ``zipFile`` and
+    silently returned None for windSpeedProbabilitiesGIS, which meant
+    Panel 4 had nothing to draw for every active storm since launch.
+    Caught when TS Arthur landfall surfaced a wave of "what isn't
+    working today" bugs.
     """
     if not advisory_urls:
         return None
     product = advisory_urls.get(key)
     if not isinstance(product, dict):
         return None
-    url = product.get("zipFile")
-    return url if isinstance(url, str) and url else None
+    for field in ("zipFile", "zipFile5km", "zipFile0p5deg"):
+        url = product.get(field)
+        if isinstance(url, str) and url:
+            return url
+    return None
 
 
 def _upsert_forecast(
