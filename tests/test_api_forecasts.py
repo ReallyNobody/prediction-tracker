@@ -123,18 +123,27 @@ def test_active_storm_forecasts_skips_dissipated_storms(db_session: Session) -> 
     assert active_storm_forecasts(db_session) == []
 
 
-def test_active_storm_forecasts_skips_storms_without_a_forecast(
+def test_active_storm_forecasts_includes_storms_without_a_forecast(
     db_session: Session,
 ) -> None:
     """An active storm whose first forecast hasn't been ingested yet is
-    omitted — returning it would force the UI to handle a null-forecast
-    branch. As soon as the next forecast ingest tick populates a row,
-    the storm appears in the response."""
+    included with ``forecast: null``. Through June 16 2026 the service
+    silently skipped these storms; that hid brand-new NHC advisories
+    (e.g. PTC One making US landfall) during the editorial moment they
+    were most useful. The cone-map renderer handles null forecast by
+    drawing just the current-position marker.
+    """
     storm = _make_storm(db_session, nhc_id="AL992017", name="NewbornInvest")
     _make_observation(db_session, storm, observation_time=datetime(2017, 9, 1, 12, tzinfo=UTC))
     # No Forecast row.
 
-    assert active_storm_forecasts(db_session) == []
+    [payload] = active_storm_forecasts(db_session)
+    assert payload["storm"]["nhc_id"] == "AL992017"
+    assert payload["storm"]["name"] == "NewbornInvest"
+    assert payload["forecast"] is None
+    # Current position still surfaces so the panel can plot the marker
+    # and the storm-details readout can render.
+    assert payload["current_position"] is not None
 
 
 def test_active_storm_forecasts_returns_latest_forecast_when_multiple(

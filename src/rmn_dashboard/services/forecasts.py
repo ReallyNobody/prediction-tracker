@@ -58,11 +58,19 @@ def active_storm_forecasts(
     NHC payload uses lowercase ids ('ep032026') while existing seed data
     and tests use uppercase ('AL112017').
 
-    A storm with ``status == 'active'`` but no ``Forecast`` row yet — e.g.
-    a freshly-ingested Invest that hasn't had its first forecastTrack
-    parsed — is *omitted*, not included with a null forecast. The cone
-    map has nothing to draw for such a storm; returning it would force
-    the UI to guard every field.
+    A storm with ``status == 'active'`` but no ``Forecast`` row yet —
+    e.g. a brand-new Potential Cyclone whose forecastTrack zip hasn't
+    been parsed yet — is *included* with ``forecast: null``. The
+    client-side cone renderer handles that case by drawing just the
+    current-position marker (no cone polygon, no 5-day track points).
+
+    History: through 2026-06-16 this service silently skipped storms
+    without forecast geometry. That was editorially wrong: a brand-new
+    NHC advisory for a PC making US landfall is exactly the moment the
+    dashboard should be most useful, and the silent-skip hid it for
+    the 15-30 minutes between the storm's first activeStorms appearance
+    and the next shapefile-scraper tick. PTC One (al012026) caught
+    this on June 16, 2026.
 
     Ordering: storms are returned sorted by ``nhc_id`` so the panel UI
     has a stable order across polls. When two storms are active at once
@@ -92,10 +100,10 @@ def active_storm_forecasts(
             .limit(1)
         )
 
-        # No forecast yet → skip. See docstring for why.
-        if latest_forecast is None:
-            continue
-
+        # latest_forecast may be None — _build_payload handles that by
+        # emitting ``forecast: null``. The client-side renderer draws
+        # current-position only in that case. See docstring for why we
+        # used to skip and why that was wrong.
         payloads.append(_build_payload(storm, latest_obs, latest_forecast, include_wsp))
 
     return payloads
@@ -104,25 +112,31 @@ def active_storm_forecasts(
 def _build_payload(
     storm: Storm,
     observation: StormObservation | None,
-    forecast: Forecast,
+    forecast: Forecast | None,
     include_wsp: bool,
 ) -> dict[str, Any]:
     """Assemble one storm's response payload.
 
-    Kept separate so it's easy to unit-test the serialization independent
-    of the DB query dance above. The observation is nullable because the
-    "active storm, no observations yet" corner case exists (dev DB seeded
-    by hand), but the forecast is not — callers must filter those out
-    before reaching here.
+    Both ``observation`` and ``forecast`` are nullable. The "active
+    storm, no observations yet" corner case exists when a dev DB is
+    seeded by hand; the "active storm, no forecast yet" case is
+    routine for brand-new NHC advisories whose shapefile-scrape hasn't
+    completed (see ``active_storm_forecasts`` docstring). When forecast
+    is None, the payload emits ``forecast: null`` and the client-side
+    renderer draws only the current-position marker.
     """
-    forecast_block: dict[str, Any] = {
-        "issued_at": _isoformat(forecast.issued_at),
-        "cone_geojson": forecast.cone_geojson,
-        "forecast_5day_points": forecast.forecast_5day_points,
-        "raw_source_url": forecast.raw_source_url,
-    }
-    if include_wsp:
-        forecast_block["wind_probability_geojson"] = forecast.wind_probability_geojson
+    forecast_block: dict[str, Any] | None
+    if forecast is None:
+        forecast_block = None
+    else:
+        forecast_block = {
+            "issued_at": _isoformat(forecast.issued_at),
+            "cone_geojson": forecast.cone_geojson,
+            "forecast_5day_points": forecast.forecast_5day_points,
+            "raw_source_url": forecast.raw_source_url,
+        }
+        if include_wsp:
+            forecast_block["wind_probability_geojson"] = forecast.wind_probability_geojson
 
     current_position: dict[str, Any] | None = None
     if observation is not None:

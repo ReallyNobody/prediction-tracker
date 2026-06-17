@@ -244,9 +244,14 @@
     // Advisory timestamp — small header annotation showing how fresh
     // the product is. Uses the latest storm in the list as the proxy
     // because the UI currently only shows "the active basin", not one
-    // storm at a time.
+    // storm at a time. When the first storm has no forecast yet (e.g.
+    // a brand-new PC just before the shapefile-scraper picks up its
+    // first track zip), fall back to an honest caption rather than
+    // leaving the header blank.
     if (advisoryEl && storms[0] && storms[0].forecast && storms[0].forecast.issued_at) {
       advisoryEl.textContent = "Issued " + storms[0].forecast.issued_at;
+    } else if (advisoryEl && storms[0]) {
+      advisoryEl.textContent = "Awaiting first forecast track";
     }
   }
 
