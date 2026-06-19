@@ -12,6 +12,7 @@
   <script src="{{ url_for('static', path='/js/panel_analogs.js') }}" defer></script>
   <script src="{{ url_for('static', path='/js/panel_cat_losses.js') }}" defer></script>
   <script src="{{ url_for('static', path='/js/panel_heat_map.js') }}" defer></script>
+  <script src="{{ url_for('static', path='/js/panel_landfall_odds.js') }}" defer></script>
 
   {#
     Page-level h1 (Day 29). Day 29's RMN-branded header replaced the
@@ -98,8 +99,12 @@
 
   <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
 
-    {#  Panel 1 — Active storms and outlook (cone map)  #}
-    <section class="panel-shell rounded-lg border border-slate-200 bg-white p-5 lg:col-span-2">
+    {#  Panel 1 — Active storms and outlook (cone map). Full-width
+        (lg:col-span-3) since the prediction-markets section moved to its
+        own row below. Editorial: the cone map is the most visually
+        distinctive element on the page and now gets the visual weight
+        it deserves rather than competing with a narrow sidebar. #}
+    <section class="panel-shell rounded-lg border border-slate-200 bg-white p-5 lg:col-span-3">
       <div class="flex items-baseline justify-between">
         <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">
           Active storms &amp; outlook
@@ -133,56 +138,52 @@
            data-testid="forecast-storm-details"></div>
     </section>
 
-    {#  Panel 4 — Prediction market sidebar (small, honest).
+    {#  Prediction Markets — full-width editorial layout (June 17 2026).
 
-        Day 31: renamed from "Markets on it" to "Prediction Markets"
-        (more descriptive, matches the term readers will Google) and
-        added the Yes-price + OI explainer.
+        Replaces the prior sidebar-with-long-list layout where 10+
+        individual market rows sat below the heat map. The list
+        communicated data but no narrative; the new sections each tell
+        a story:
 
-        Day 37: added Polymarket as a second platform alongside Kalshi.
-        Three editorial changes:
-          - Switched displayed metric from OI to volume across both
-            platforms (Polymarket OI sits on the parent event, not the
-            market; volume_total is at market level on both). Volume
-            also reads more directly for a journalism audience: "how
-            much money has actually traded on this question?"
-          - Inline 24h delta supplementing the cumulative volume so
-            readers can distinguish "stale market with old volume"
-            from "actively moving today." Both platforms expose this.
-          - URL branched by platform: kalshi.com/markets/{ticker} for
-            Kalshi, polymarket.com/event/{ticker} for Polymarket.
-        Caption rewritten to be platform-agnostic. #}
-    <aside class="panel-shell rounded-lg border border-slate-200 bg-white p-5"
-           data-testid="heat-map-panel">
+          1. Today's Moves — cross-platform heat map at proper width,
+             showing which markets shifted most over the past 24h.
+          2. 2026 Atlantic Count — count-curve visualization of the
+             market's implied distribution of seasonal hurricane counts,
+             with the 1991-2020 climate baseline for comparison.
+          3. US Landfall Odds — three hero cards for the highest-volume
+             binary outcome markets (Polymarket Cat 4, Polymarket Cat 5,
+             Kalshi major-hurricane ≥2 threshold). Each card shows the
+             headline Yes price plus the 24h delta as direction-of-
+             conviction.
+
+        Mount IDs preserved from prior layout so the JS loaders
+        (panel_heat_map.js, panel_count_curve.js, panel_landfall_odds.js)
+        find their targets without modification. The standalone
+        markets list and its server-side Jinja loop are removed —
+        editorial framing replaces enumeration.
+    #}
+    <section class="panel-shell rounded-lg border border-slate-200 bg-white p-5 lg:col-span-3"
+             data-testid="prediction-markets-panel">
       <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">
         Prediction Markets
       </h2>
-      <p class="mt-1 text-xs text-slate-400 leading-relaxed">
-        On Kalshi and Polymarket, the "Yes" price reflects the
-        market's implied probability of the event occurring. Volume
-        shows how much has actually traded on each market — the 24h
-        delta highlights what's moving today.
+      <p class="mt-1 text-xs text-slate-400 max-w-4xl leading-relaxed">
+        What hurricane outcomes are trading right now on Kalshi and
+        Polymarket — daily moves on the cross-platform grid, the
+        market's implied 2026 hurricane-count distribution, and binary
+        landfall odds on the strongest US-impact scenarios.
       </p>
 
-      {#
-        Heat-map sub-section — cross-platform day-over-day move grid.
-
-        Folded into this panel June 17 2026 so the prediction-market
-        views (cross-platform heat map, count-curve distribution, top
-        movers list) live in one box rather than split across the page.
-        The combined panel fills the sidebar height next to Panel 1's
-        Active Storms map and removes the white space the standalone
-        Heat Map left behind.
-
-        Renderer: static/js/panel_heat_map.js. Data: /api/v1/heat-map/
-        prediction-markets. The diverging red/blue color scale, hover
-        tooltips, and is_quiet caption logic are unchanged from the
-        standalone implementation — only the mounting moved.
-      #}
-      <div class="mt-4 pt-3 border-t border-slate-100">
-        <p id="heat-map-framing"
-           class="text-[11px] text-slate-400"
-           data-testid="heat-map-framing"></p>
+      {# Section 1: Today's moves — cross-platform heat map at full width #}
+      <div class="mt-6">
+        <div class="flex items-baseline justify-between gap-3 flex-wrap">
+          <h3 class="text-xs uppercase tracking-wider text-slate-500 font-semibold">
+            Today's moves
+          </h3>
+          <p id="heat-map-framing"
+             class="text-[11px] text-slate-400"
+             data-testid="heat-map-framing"></p>
+        </div>
         <div id="heat-map-readout"
              class="mt-2 hidden overflow-x-auto"
              data-testid="heat-map-readout"></div>
@@ -190,90 +191,66 @@
            class="hidden mt-2 text-xs text-slate-500"
            data-testid="heat-map-caption"></p>
         <div id="heat-map-empty" class="mt-2 text-slate-400">
-          <p class="text-xs">Loading heat-map…</p>
+          <p class="text-xs">Loading heat map…</p>
         </div>
       </div>
 
-      {#
-        Day 46: count-curve anchor at the top of the panel.
-
-        The Kalshi KXHURCTOT-{YEAR}DEC01-T{N} contracts form a
-        ladder of binary bets at incremental thresholds. Rendered as
-        a cumulative probability curve, the ladder visualizes the
-        market's consensus distribution of expected hurricane counts
-        for the season. The supporting markets list below this block
-        excludes those count contracts (filtered server-side via
-        latest_hurricane_markets exclude_count_series) and focuses
-        on the questions that don't fit a single count axis — named
-        storm by date, Cat 3+ landfall in state X, etc.
-
-        Client-rendered against /api/v1/markets/count-curve; the
-        empty-state caption renders when there aren't enough count
-        contracts ingested yet (off-season pre-listing, fresh deploy).
-      #}
-      <div id="count-curve"
-           class="mt-3 mb-4"
-           data-testid="count-curve">
-        <p class="text-xs italic" style="color: #888780;">Loading count curve…</p>
+      {# Section 2: Season consensus — count-curve distribution
+         Renderer: static/js/panel_count_curve.js. Data:
+         /api/v1/markets/count-curve. The chart shows each Kalshi
+         KXHURCTOT-26DEC01-T{N} binary's market-implied probability
+         along the x-axis (threshold), with a slate dashed line at the
+         1991-2020 climate average for context. Empty-state caption
+         renders when no count contracts have been ingested yet. #}
+      <div class="mt-8">
+        <h3 class="text-xs uppercase tracking-wider text-slate-500 font-semibold">
+          2026 Atlantic count — market-implied
+        </h3>
+        <p class="mt-1 text-xs text-slate-400 max-w-3xl">
+          Each point is a Kalshi binary on "more than N Atlantic
+          hurricanes in 2026." The market-clearing Yes price reads as
+          probability. The 1991-2020 climate average shown as the
+          slate reference line.
+        </p>
+        <div id="count-curve"
+             class="mt-2"
+             data-testid="count-curve">
+          <p class="text-xs italic text-slate-400">Loading count curve…</p>
+        </div>
       </div>
 
-      {% if markets %}
-        <ul class="mt-3 divide-y divide-slate-100">
-          {% for m in markets %}
-            <li class="py-2">
-              {#- Per-platform URL routing. Kalshi uses /markets/{ticker};
-                  Polymarket uses /event/{slug}. Default to '#' if an
-                  unknown platform slips into the table — defensive
-                  against a future scraper bug. -#}
-              {% if m.platform == 'polymarket' %}
-                {% set market_url = 'https://polymarket.com/event/' ~ m.ticker %}
-              {% elif m.platform == 'kalshi' %}
-                {% set market_url = 'https://kalshi.com/markets/' ~ m.ticker %}
-              {% else %}
-                {% set market_url = '#' %}
-              {% endif %}
-              <a href="{{ market_url }}"
-                 target="_blank" rel="noopener"
-                 class="block hover:bg-slate-50 -mx-1 px-1 rounded">
-                <p class="text-sm text-slate-800 leading-snug">{{ m.title }}</p>
-                <p class="mt-1 text-xs text-slate-500 flex justify-between gap-2 flex-wrap">
-                  <span>
-                    Yes
-                    <span class="font-mono text-slate-700">
-                      {% if m.yes_price is not none %}{{ '%.0f'|format(m.yes_price * 100) }}¢{% else %}—{% endif %}
-                    </span>
-                  </span>
-                  <span>
-                    Vol
-                    <span class="font-mono text-slate-700">
-                      {% if m.volume_total is not none %}${{ '{:,.0f}'.format(m.volume_total) }}{% else %}—{% endif %}
-                    </span>
-                    {%- if m.volume_24h is not none and m.volume_24h > 0 %}
-                      <span class="text-slate-400 ml-1">· 24h
-                        <span class="font-mono text-slate-600">+${{ '{:,.0f}'.format(m.volume_24h) }}</span>
-                      </span>
-                    {%- endif %}
-                  </span>
-                </p>
-                <p class="mt-1 text-[10px] uppercase tracking-wide text-slate-400 font-mono">
-                  {{ m.platform }}
-                </p>
-              </a>
-            </li>
-          {% endfor %}
-        </ul>
-        <p class="mt-3 text-xs text-slate-400">Sources: Kalshi, Polymarket · updated on each scrape.</p>
-      {% else %}
-        <div class="mt-3 text-slate-400">
-          <p class="text-sm">
-            No hurricane prediction markets are open right now. Markets
+      {# Section 3: US landfall odds — three hero cards
+         Renderer: static/js/panel_landfall_odds.js. Pulls
+         /api/v1/heat-map/prediction-markets and renders the three
+         highest-editorial-weight binary outcome markets as cards. #}
+      <div class="mt-8">
+        <h3 class="text-xs uppercase tracking-wider text-slate-500 font-semibold">
+          US landfall odds
+        </h3>
+        <p class="mt-1 text-xs text-slate-400 max-w-3xl">
+          Binary outcome markets on the strongest US-impact scenarios
+          for the 2026 Atlantic season. Yes price reads as market-
+          implied probability; the 24h delta shows direction of
+          conviction over the last day.
+        </p>
+        <div id="landfall-odds-cards"
+             class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3"
+             data-testid="landfall-odds-cards">
+          <p class="text-xs italic text-slate-400 col-span-full">Loading landfall odds…</p>
+        </div>
+      </div>
+
+      {% if not markets %}
+        <div class="mt-6 text-slate-400">
+          <p class="text-xs">
+            Note: no hurricane prediction markets currently ingested. Markets
             on Atlantic hurricane counts and individual landfalls
             typically appear on Kalshi and Polymarket as the season
             approaches.
           </p>
         </div>
       {% endif %}
-    </aside>
+    </section>
 
     {#
       Panel 4b — Landfall probability (5-day cumulative WSP).
